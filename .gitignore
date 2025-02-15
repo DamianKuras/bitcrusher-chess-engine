@@ -1,0 +1,14 @@
+# IDE
+.vs
+.vscode
+
+# Build artifacts
+bin/
+obj/
+build/
+
+
+# Dependencies
+deps/**
+
+
