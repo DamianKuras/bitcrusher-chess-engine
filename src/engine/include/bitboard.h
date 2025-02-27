@@ -94,9 +94,9 @@ constexpr void clearSquare(uint64_t& bitboard, Square square) noexcept {
 
 // pops the first set square (LSB to MSB)
 constexpr Square popFirstSetSquare(uint64_t& bitboard) noexcept {
-    int index = __builtin_ctzll(bitboard);
+    auto index = static_cast<Square>(__builtin_ctzll(bitboard));
     bitboard &= bitboard - 1;
-    return static_cast<Square>(index);
+    return index;
 }
 
 // Variadic template to create a bitboard from multiple squares.
@@ -111,7 +111,7 @@ constexpr Square popFirstSetSquare(uint64_t& bitboard) noexcept {
 // square::A4, square::A5, square::A6, square::A7, square::A8);
 template <typename... Args> constexpr uint64_t bitboardFromSquares(Args... args) {
     uint64_t bitboard = 0;
-    for (uint8_t square_index : {args...}) {
+    for (Square square_index : {args...}) {
         bitboard |= bitboardFromSquare(square_index);
     }
     return bitboard;
