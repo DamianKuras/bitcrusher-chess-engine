@@ -10,7 +10,10 @@ project "GoogleTest"
     kind "StaticLib"
     files {
         path.join(google_test_dir,"src","*.cc"),
-        path.join(google_test_dir,"src","*.h")
+        path.join(google_test_dir, "include/gtest/**")
+    }
+    removefiles{
+        path.join(google_test_dir,"src","gtest-all.cc")
     }
     includedirs {
         path.join(google_test_dir,"include"),
@@ -20,8 +23,9 @@ project "GoogleTest"
 project "Tests"
     kind "ConsoleApp"
     dependson {
-        "GoogleTest", 
-        "Engine"
+        "Engine",
+        "GoogleTest"
+       
     }
     files {
         path.join(TESTS_DIR,"**.cpp"),

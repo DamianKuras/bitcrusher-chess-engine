@@ -15,9 +15,11 @@ workspace "BitcrusherChessEngine"
 
     -- Workspace configuration
     configurations {"Debug", "Release"}
+    platforms { "x32", "x64" }  
+    defaultplatform ("x64")
     location "build"
     language "C++"
-    cppdialect "C++17"
+    cppdialect "C++23"
     targetdir(path.join(BIN_DIR,"%{cfg.buildcfg}"))
     objdir(path.join(OBJ_DIR,"%{cfg.buildcfg}", "%{prj.name}"))
     warnings "Extra"
@@ -31,6 +33,12 @@ workspace "BitcrusherChessEngine"
         defines {"NDEBUG"}
         symbols "Off"
         optimize "Speed"
+
+    filter {"platforms:x32"}
+        architecture "x32"
+
+    filter {"platforms:x64"}
+        architecture "x64"
 
     newoption {
         trigger = "with-tests",
@@ -58,7 +66,6 @@ if _OPTIONS["with-benchmarks"] then
     include(BENCHMARKS_DIR)
 end
 
-if _OPTIONS["with-uci"] then
-    include(UCI_DIR)
-end
+
+
 

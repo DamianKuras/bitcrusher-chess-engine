@@ -7,13 +7,14 @@ ensure_dependency(
 
 project "BenchmarkRunner"
     kind "ConsoleApp"
+    defines { "BENCHMARK_STATIC_DEFINE" }
     dependson{
         "Engine", 
         "GoogleBenchmark"
     }
     files {
         path.join(BENCHMARKS_DIR,"**.cpp"),
-        path.join(BENCHMARKS_DIR,"**.h")
+        path.join(BENCHMARKS_DIR,"include","**.h")
     }
     links {
         "Engine",
@@ -24,9 +25,10 @@ project "BenchmarkRunner"
         ENGINE_INCLUDE_DIR
     }
 
-
+-- Dependency GoogleBenchmark project as a static library
 project "GoogleBenchmark"
     kind "StaticLib"
+    defines { "BENCHMARK_STATIC_DEFINE" }
     files{
         path.join(google_benchmark_dir,"src","*.cc"),
         path.join(google_benchmark_dir,"include","benchmark","*.h")
@@ -36,6 +38,8 @@ project "GoogleBenchmark"
     }
     filter "system:linux"
         links{"pthread"}
+    filter "system:windows"
+        links { "Shlwapi" }
 
 
 
