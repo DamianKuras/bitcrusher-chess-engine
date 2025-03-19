@@ -1,14 +1,11 @@
 #ifndef BITCRUSHER_FEN_FORMATTER_HPP
 #define BITCRUSHER_FEN_FORMATTER_HPP
 
-#include <cctype>
+#include "bitboard_utils.hpp"
+#include "board_state.hpp"
 #include <cstdint>
 #include <string_view>
 #include <utility>
-
-#include "bitboard.hpp"
-#include "board_state.hpp"
-#include "move.hpp"
 
 namespace bitcrusher {
 
@@ -43,13 +40,13 @@ createChatToPieceLookup() {
 constexpr Piece getCapturedPiece(const BoardState &board, Square square) {
     if (board.isWhiteMove()) {
         for (const auto piece : BLACK_PIECES) {
-            if (isSquareSet(board.getBitboard(piece), square)) {
+            if (utils::isSquareSet(board.getBitboard(piece), square)) {
                 return piece;
             }
         }
     } else {
         for (const auto piece : WHITE_PIECES) {
-            if (isSquareSet(board.getBitboard(piece), square)) {
+            if (utils::isSquareSet(board.getBitboard(piece), square)) {
                 return piece;
             }
         }
@@ -60,13 +57,13 @@ constexpr Piece getCapturedPiece(const BoardState &board, Square square) {
 constexpr Piece getOurPiece(const BoardState &board, Square square) {
     if (board.isWhiteMove()) {
         for (const auto piece : WHITE_PIECES) {
-            if (isSquareSet(board.getBitboard(piece), square)) {
+            if (utils::isSquareSet(board.getBitboard(piece), square)) {
                 return piece;
             }
         }
     } else {
         for (const auto piece : BLACK_PIECES) {
-            if (isSquareSet(board.getBitboard(piece), square)) {
+            if (utils::isSquareSet(board.getBitboard(piece), square)) {
                 return piece;
             }
         }
@@ -84,15 +81,12 @@ constexpr std::array<Piece, CHAR_TO_PIECE_TABLE_SIZE> CHAR_TO_PIECE =
 static inline void parseFEN(std::string_view fen, BoardState &boardState) {
     boardState.reset();
     auto iterator = fen.begin();
-    Square square =
-        Square::A8; // Starting square for FEN board description that will be
-                    // in sync with currently parsed fen square
+    Square square = Square::A8; // Starting square for FEN board description
 
     // Parse board piece placement
     while (*iterator != ' ') {
         const char fen_character = *iterator;
-        // if (internal::isDigit(fen_character)) {
-        if (std::isdigit(fen_character)) {
+        if (internal::isDigit(fen_character)) {
             // Advance the square by the the number of empty squares
             square += convert::toDigit(fen_character);
         } else if (fen_character != '/') {
