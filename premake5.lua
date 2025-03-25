@@ -14,7 +14,7 @@ workspace "BitcrusherChessEngine"
     ENGINE_INCLUDE_DIR = path.join(ENGINE_DIR, "include")
 
     -- Workspace configuration
-    configurations {"Debug", "Release"}
+    configurations {"Debug", "Release", "Profiling"}
     platforms { "x32", "x64" }  
     defaultplatform ("x64")
     location "build"
@@ -23,15 +23,19 @@ workspace "BitcrusherChessEngine"
     targetdir(path.join(BIN_DIR,"%{cfg.buildcfg}"))
     objdir(path.join(OBJ_DIR,"%{cfg.buildcfg}", "%{prj.name}"))
     warnings "Extra"
-
     filter {"configurations:Debug"}
         defines {"DEBUG"}
         symbols "On"
-        optimize "Off"
+        optimize "Debug"
         
     filter {"configurations:Release"}
         defines {"NDEBUG"}
         symbols "Off"
+        optimize "Speed"
+
+    filter {"configurations:Profiling"}
+        defines {"NDEBUG"}
+        symbols "On"
         optimize "Speed"
 
     filter {"platforms:x32"}
@@ -66,6 +70,8 @@ if _OPTIONS["with-benchmarks"] then
     include(BENCHMARKS_DIR)
 end
 
-
+if _OPTIONS["with-uci"] then
+    include(UCI_DIR)
+end
 
 

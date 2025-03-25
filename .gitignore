@@ -1,14 +1,19 @@
 # IDE
 .vs
 .vscode
+.idea
 
 # Build artifacts
 bin/
 obj/
 build/
-
+**/Makefile
+*.make
+*.vcxproj
+*.vcxproj.*
 
 # Dependencies
 deps/**
+
 
 
