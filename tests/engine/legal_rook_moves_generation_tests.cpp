@@ -1,5 +1,5 @@
 #include "bitboard_enums.hpp"
-#include "legal_moves_generator.hpp"
+#include "legal_moves/rook_legal_moves.hpp"
 #include "move_generation_fixture.hpp"
 #include "test_helpers.hpp"
 
