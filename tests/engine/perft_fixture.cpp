@@ -17,7 +17,8 @@ using test_helpers::TestPerftMoveSink;
 
 namespace {
 
-template <Color SideToMove> uint64_t perft(int depth, BoardState& board, TestPerftMoveSink& sink) {
+template <Color SideToMove>
+[[nodiscard]] uint64_t perft(int depth, BoardState& board, TestPerftMoveSink& sink) {
     uint64_t leave_node_count = 0;
     board.recalculateOccupancy();
     updateRestrictionContext<SideToMove>(board, board.restriction_context);
@@ -27,11 +28,11 @@ template <Color SideToMove> uint64_t perft(int depth, BoardState& board, TestPer
     std::vector<Move> moves = std::move(sink.moves);
     sink.clearMoves();
 
-    if (depth == 1) {
+    if (depth == test_helpers::LEAF_DEPTH) {
         return static_cast<uint64_t>(moves.size());
     }
 
-    for (auto move : moves) {
+    for (const auto& move : moves) {
         board.recalculateOccupancy();
         updateRestrictionContext<SideToMove>(board, board.restriction_context);
         makeMove(board, move);
@@ -54,7 +55,12 @@ void PerftParametrizedTest::runTest() {
     const auto& test_case = GetParam();
     parseFEN(test_case.fen, board_);
     TestPerftMoveSink local_sink;
-    uint64_t          leaf_node_count = perft<Color::WHITE>(test_case.depth, board_, local_sink);
+    uint64_t          leaf_node_count = 0;
+    if (board_.isWhiteMove()) {
+        leaf_node_count = perft<Color::WHITE>(test_case.depth, board_, local_sink);
+    } else {
+        leaf_node_count = perft<Color::BLACK>(test_case.depth, board_, local_sink);
+    }
 
     EXPECT_EQ(leaf_node_count, test_case.leaf_node_count)
         << test_case << "Leaf node count mismatch expected: " << test_case.leaf_node_count

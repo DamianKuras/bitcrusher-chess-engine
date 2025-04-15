@@ -4,7 +4,6 @@
 #include "bitboard_concepts.hpp"
 #include "board_state.hpp"
 #include "move.hpp"
-#include "test_helpers.hpp"
 #include <gtest/gtest.h>
 #include <string>
 
@@ -12,6 +11,7 @@ namespace test_helpers {
 
 using bitcrusher::Move;
 using bitcrusher::MoveSink;
+const int LEAF_DEPTH = 1;
 
 // Sink to collect and count moves during perft testing.
 struct TestPerftMoveSink {
@@ -28,8 +28,8 @@ struct TestPerftMoveSink {
 
     void operator()(const bitcrusher::Move& move) noexcept {
         moves.push_back(move);
-        const int leaf_depth = 1;
-        if (depth != leaf_depth) {
+
+        if (depth != LEAF_DEPTH) {
             return;
         }
         if (move.isEnPassant()) {
@@ -66,8 +66,7 @@ struct PerftTestCase {
 
 class PerftParametrizedTest : public ::testing::TestWithParam<PerftTestCase> {
 private:
-    BoardState        board_;
-    TestPerftMoveSink sink_;
+    BoardState board_;
 
 protected:
     void runTest();
