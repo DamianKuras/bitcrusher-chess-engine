@@ -2,21 +2,27 @@
 #define BITCRUSHER_BITBOARD_ENUMS_HPP
 
 #include <cstdint>
+#include <ostream>
 #include <utility>
 
 namespace bitcrusher {
 
-inline constexpr int BOARD_DIMENSION = 8;
+inline constexpr int BOARD_DIMENSION{8};
 
-const uint64_t EMPTY_BITBOARD = 0;
+inline constexpr std::uint8_t PIECE_COUNT_PER_SIDE = 6;
 
-const uint64_t FULL_BITBOARD = ~EMPTY_BITBOARD;
+// constexpr std::string_view INITIAL_POSITION_FEN =
+//     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+inline constexpr std::uint64_t EMPTY_BITBOARD{0};
+
+inline constexpr std::uint64_t FULL_BITBOARD{~EMPTY_BITBOARD};
 
 // Represents chess board squares using 0-based indexing from A8 (0) to H1 (63)
 //
 // Null square is equal to 64 outside of the 0-63 board range.
 // clang-format off
-enum class Square : uint8_t {
+enum class Square : std::uint8_t {
     A8, B8, C8, D8, E8, F8, G8, H8,
     A7, B7, C7, D7, E7, F7, G7, H7,
     A6, B6, C6, D6, E6, F6, G6, H6,
@@ -28,9 +34,9 @@ enum class Square : uint8_t {
     NULL_SQUARE,
 };
 
-const int SQUARE_COUNT=64;
+const int SQUARE_COUNT{64};
 
-enum class Rank: uint8_t {
+enum class Rank: std::uint8_t {
     R_8,
     R_7,
     R_6,
@@ -41,7 +47,7 @@ enum class Rank: uint8_t {
     R_1,
 };
 
-enum class File:uint8_t {
+enum class File: std::uint8_t {
     A, B, C, D, E, F, G, H,
 };
 // clang-format on
@@ -49,7 +55,7 @@ enum class File:uint8_t {
 enum class Color : bool { WHITE, BLACK };
 enum class Side : bool { KINGSIDE, QUEENSIDE };
 
-enum class Diagonal : uint8_t {
+enum class Diagonal : std::uint8_t {
     H8,
     G8H7,
     F8H6,
@@ -87,25 +93,45 @@ enum class CounterDiagonal : uint8_t {
     H1
 };
 
-enum class Direction : uint8_t {
+enum class Direction : std::uint8_t {
     TOP,
     LEFT,
     RIGHT,
     BOTTOM,
 };
 
+enum class PieceType : std::uint8_t { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, NONE };
+
+enum class Piece : std::uint8_t {
+    WHITE_PAWN,
+    WHITE_KNIGHT,
+    WHITE_BISHOP,
+    WHITE_ROOK,
+    WHITE_QUEEN,
+    WHITE_KING,
+
+    BLACK_PAWN,
+    BLACK_KNIGHT,
+    BLACK_BISHOP,
+    BLACK_ROOK,
+    BLACK_QUEEN,
+    BLACK_KING,
+    COUNT,
+    NONE,
+};
+
+enum class SlidingPieceType : std::uint8_t { DIAGONAL, HORIZONTAL_VERTICAL };
+
 // Square operators
-[[nodiscard]] static constexpr Square operator+(Square square,
-                                                int offset) noexcept {
+[[nodiscard]] static constexpr Square operator+(Square square, int offset) noexcept {
     return static_cast<Square>(std::to_underlying(square) + offset);
 }
 
-static constexpr void operator+=(Square &square, int offset) noexcept {
+static constexpr void operator+=(Square& square, int offset) noexcept {
     square = square + offset;
 }
 
-[[nodiscard]] static constexpr Square operator-(Square square,
-                                                int offset) noexcept {
+[[nodiscard]] static constexpr Square operator-(Square square, int offset) noexcept {
     return static_cast<Square>(std::to_underlying(square) - offset);
 }
 
@@ -113,31 +139,89 @@ static constexpr Square operator-=(Square square, int offset) noexcept {
     return square - offset;
 }
 
-// File operators
-[[nodiscard]] static constexpr File operator+(File file, int offset) noexcept {
-    return static_cast<File>(std::to_underlying(file) + offset);
+[[nodiscard]] static constexpr Color operator!(Color color) noexcept {
+    return static_cast<Color>(! std::to_underlying(color));
 }
 
-static constexpr void operator+=(File &file, int offset) noexcept {
-    file = file + offset;
+struct SquareChars {
+    char file = 'a';
+    char rank = '1';
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SquareChars& sq) {
+    os << sq.file << sq.rank;
+    return os;
 }
 
-[[nodiscard]] static constexpr File operator-(File file, int offset) noexcept {
-    return static_cast<File>(std::to_underlying(file) - offset);
+/*
+Each of the castling right has its own bit
+*/
+enum class CastlingRights : std::uint8_t {
+    NONE            = 0,
+    WHITE_KINGSIDE  = 1 << 0,
+    WHITE_QUEENSIDE = 1 << 1,
+    BLACK_KINGSIDE  = 1 << 2,
+    BLACK_QUEENSIDE = 1 << 3,
+};
+
+constexpr CastlingRights operator|(CastlingRights lhs, CastlingRights rhs) noexcept {
+    return static_cast<CastlingRights>(static_cast<std::uint8_t>(lhs) |
+                                       static_cast<std::uint8_t>(rhs));
 }
 
-// Rank operators
-[[nodiscard]] static constexpr Rank operator+(Rank rank, int offset) noexcept {
-    return static_cast<Rank>(std::to_underlying(rank) - offset);
+constexpr CastlingRights& operator|=(CastlingRights& lhs, CastlingRights rhs) noexcept {
+    lhs = lhs | rhs;
+    return lhs;
 }
 
-static constexpr void operator+=(Rank &rank, int offset) noexcept {
-    rank = rank + offset;
+constexpr CastlingRights operator&(CastlingRights lhs, CastlingRights rhs) noexcept {
+    return static_cast<CastlingRights>(static_cast<std::uint8_t>(lhs) &
+                                       static_cast<std::uint8_t>(rhs));
 }
 
-[[nodiscard]] static constexpr Rank operator-(Rank rank, int offset) noexcept {
-    return static_cast<Rank>(std::to_underlying(rank) + offset);
+constexpr CastlingRights& operator&=(CastlingRights& lhs, CastlingRights rhs) noexcept {
+    lhs = lhs & rhs;
+    return lhs;
 }
+
+constexpr CastlingRights operator~(CastlingRights rhs) noexcept {
+    return static_cast<CastlingRights>(~static_cast<uint8_t>(rhs));
+}
+
+// usage:
+// enum class MyEnum { A, B, C, Count };
+// EnumIndexedArray<int, MyEnum, static_cast<std::size_t>(MyEnum::Count)> arr;
+// arr[MyEnum::B] = 42;
+template <typename T, typename EnumType, std::size_t Size> class EnumIndexedArray {
+    std::array<T, Size> data_{};
+
+public:
+    // Non-const access
+    constexpr T& operator[](EnumType e) noexcept { return data_[static_cast<std::size_t>(e)]; }
+
+    // Const access
+    constexpr const T& operator[](EnumType e) const noexcept {
+        return data_[static_cast<std::size_t>(e)];
+    }
+
+    // Fill method
+    constexpr void fill(const T& value) noexcept {
+        for (std::size_t i = 0; i < Size; ++i) {
+            data_[i] = value;
+        }
+    }
+
+    // Optionally expose underlying data for iteration or std::get
+    constexpr const std::array<T, Size>& data() const noexcept { return data_; }
+
+    constexpr std::array<T, Size>& data() noexcept { return data_; }
+
+    EnumIndexedArray() = default;
+
+    bool operator==(const EnumIndexedArray& rhs) const = default;
+};
+
+// clang-format on
 
 } // namespace bitcrusher
 
