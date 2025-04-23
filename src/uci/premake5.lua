@@ -3,7 +3,7 @@ project "Uci"
     dependson {"Engine"}
     files {
         path.join(UCI_DIR,"**.cpp"),
-        path.join(UCI_DIR, "**.h")
+        path.join(UCI_DIR, "**.hpp")
     }
     links {
         "Engine"
