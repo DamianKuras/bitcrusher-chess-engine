@@ -1,4 +1,0 @@
-FROM GUI: uci
-TO GUI: id name Bitcrusher Chess Engine 0.1 
-id author Damian Kuraś 
-uciok

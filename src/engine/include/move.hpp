@@ -32,7 +32,11 @@ public:
     // promoted to.
     [[nodiscard]] constexpr PieceType promotionPiece() const noexcept { return moving_piece_; }
 
-    [[nodiscard]] constexpr bool isEnPassant() const { return flag_ == MoveType::EN_PASSANT; }
+    [[nodiscard]] constexpr bool isQuiet() const noexcept { return flag_ == MoveType::QUIET; }
+
+    [[nodiscard]] constexpr bool isEnPassant() const noexcept {
+        return flag_ == MoveType::EN_PASSANT;
+    }
 
     [[nodiscard]] constexpr bool isCapture() const noexcept {
         return flag_ == MoveType::CAPTURE || flag_ == MoveType::PROMOTION_CAPTURE ||
@@ -110,7 +114,7 @@ public:
 
         if constexpr (MoveT == MoveType::CAPTURE) {
             return createCaptureMove(from, to, MovedOrPromotedToPiece,
-                                     board.getCapturePieceType(to));
+                                     board.getPieceTypeOnSquare(to));
         }
 
         if constexpr (MoveT == MoveType::DOUBLE_PAWN_PUSH) {
@@ -137,7 +141,7 @@ public:
 
         if constexpr (MoveT == MoveType::PROMOTION_CAPTURE) {
             return createPromotionCaptureMove(from, to, MovedOrPromotedToPiece,
-                                              board.getCapturePieceType(to));
+                                              board.getPieceTypeOnSquare(to));
         }
 
         if constexpr (MoveT == MoveType::QUIET) {
