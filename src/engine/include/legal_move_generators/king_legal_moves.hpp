@@ -1,17 +1,18 @@
 #ifndef BITCRUSHER_KING_LEGAL_MOVES_HPP
 #define BITCRUSHER_KING_LEGAL_MOVES_HPP
 
-#include "attacks/king_attacks.hpp"
-#include "bitboard_conversions.hpp"
-#include "board_state.hpp"
-#include "concepts.hpp"
-#include "move.hpp"
+#include "attack_generators/king_attacks.hpp"
+#include "attack_generators/squares_attacked.hpp"
+#include "bitboard_concepts.hpp"
+#include "move_generation_from_bitboard.hpp"
+#include "restriction_context.hpp"
 
 namespace bitcrusher {
 
 template <MoveSink MoveSinkT, Color Side>
-void generateLegalKingMoves(const BoardState& board, MoveSinkT& sink) {
-    // King moves filtered by squares not under opponent attack and the ones where attacking piece x ray king.
+void generateLegalKingMoves(const BoardState&        board,
+                            const RestrictionContext restriction_context,
+                            MoveSinkT&               sink) {
     const uint64_t king_moves = generateKingAttacks(board.getBitboard<PieceType::KING, Side>()) &
                                 (~generateSquaresAttackedXRayingOpponentKing<! Side>(board));
 
@@ -41,7 +42,7 @@ void generateLegalKingMoves(const BoardState& board, MoveSinkT& sink) {
 
     uint64_t enemy_attacked_squares = generateSquaresAttacked<! Side>(board);
 
-    if (board.restriction_context.check_count == 0) {
+    if (restriction_context.check_count == 0) {
         if constexpr (Side == Color::WHITE) {
             if (board.hasWhiteKingsideCastlingRight() &&
                 board.isEmpty(squares_between_white_kingside_castle_not_occupied_or_attacked) &&
@@ -66,7 +67,7 @@ void generateLegalKingMoves(const BoardState& board, MoveSinkT& sink) {
                     enemy_attacked_squares)) {
                 sink(Move::createCastlingMove<Side, Side::KINGSIDE>());
             }
-            if (board.hasBlackKingsideCastlingRight() &&
+            if (board.hasBlackQueensideCastlingRight() &&
                 board.isEmpty(squares_between_black_queenside_castle_not_occupied) &&
                 board.isNotAttackedByOpponent<Side>(
                     squares_between_black_queenside_castle_not_attacked, enemy_attacked_squares)) {

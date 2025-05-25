@@ -1,11 +1,10 @@
 #ifndef BITCRUSHER_PAWN_ATTACKS_HPP
 #define BITCRUSHER_PAWN_ATTACKS_HPP
 
+#include "bitboard_concepts.hpp"
 #include "bitboard_enums.hpp"
 #include "bitboard_offsets.hpp"
-#include "concepts.hpp"
 #include "file_rank_bitboards.hpp"
-#include <cstdint>
 
 namespace bitcrusher {
 
@@ -44,7 +43,7 @@ template <Color Side> consteval int pawnDoublePushOffset() {
 
 // Returns only those pawns that are still on their starting rank so that a double-push is allowed.
 template <Color Side>
-[[nodiscard]] constexpr uint64_t getPawnsEligibleForDoublePush(uint64_t pawns) noexcept {
+[[nodiscard]] constexpr uint64_t getPawnsOnStartRank(uint64_t pawns) noexcept {
     constexpr uint64_t PAWN_START_RANK = Side == Color::WHITE
                                              ? RANK_BITBOARDS[std::to_underlying(Rank::R_2)]
                                              : RANK_BITBOARDS[std::to_underlying(Rank::R_7)];

@@ -2,6 +2,7 @@
 #define BITCRUSHER_DIAGONAL_SLIDER_ATTACKS_HPP
 
 #include "bitboard_enums.hpp"
+#include "bitboard_offsets.hpp"
 #include "shared_slider_attacks.hpp"
 
 namespace bitcrusher {

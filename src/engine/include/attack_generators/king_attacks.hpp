@@ -1,10 +1,10 @@
 #ifndef BITCRUSHER_KING_ATTACKS_HPP
 #define BITCRUSHER_KING_ATTACKS_HPP
 
-namespace bitcrusher {
-
 #include "bitboard_enums.hpp"
 #include "bitboard_offsets.hpp"
+
+namespace bitcrusher {
 
 constexpr uint64_t generateKingAttacks(uint64_t king_bb) {
     uint64_t attacks = 0ULL;

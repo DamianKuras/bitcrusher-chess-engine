@@ -1,9 +1,10 @@
 #ifndef BITCRUSHER_KNIGHT_ATTACKS_HPP
 #define BITCRUSHER_KNIGHT_ATTACKS_HPP
 
-namespace bitcrusher {
-
+#include "bitboard_enums.hpp"
 #include "bitboard_offsets.hpp"
+
+namespace bitcrusher {
 
 constexpr uint64_t generateKnightsAttacks(uint64_t knights_bitboard) {
     uint64_t attacks = 0ULL;
