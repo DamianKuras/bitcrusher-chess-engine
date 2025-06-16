@@ -4,18 +4,23 @@
 #include "engine.hpp"
 #include "engine_debug_logger.hpp"
 #include "uci_constants.hpp"
-#include <chrono>
 #include <iostream>
 #include <ranges>
 #include <string>
 #include <string_view>
-#include <thread>
 
 namespace bitcrusher::uci {
 
 class UCIHandler {
 
 public:
+    UCIHandler() {
+        search_manager_.setOnSearchFinished([this]() {
+            std::string best_move = search_manager_.bestMoveUci();
+            send("bestmove " + best_move );
+        });
+    }
+
     void run() {
         while (std::getline(std::cin, line_)) {
 #ifdef DEBUG
@@ -29,11 +34,9 @@ public:
     }
 
 private:
-    bool               new_game_{true};
-    std::string        line_;
-    bitcrusher::Engine engine_;
-    std::jthread       search_thread_;
-    std::stop_source   stop_source_;
+    bool        new_game_{true};
+    std::string line_;
+    bitcrusher::SearchManager search_manager_;
 
     static inline void send(std::string_view msg) {
 
@@ -44,27 +47,6 @@ private:
         std::cout << msg << "\n" << std::flush;
     }
 
-    [[nodiscard]] inline std::string getInfo() const {
-        auto const&                   ctx = engine_.getSearchContext();
-        std::chrono::duration<double> elapsed_seconds{std::chrono::steady_clock::now() -
-                                                      ctx.start_time};
-        uint64_t                      nps = ctx.nodes_searched / elapsed_seconds.count();
-
-        auto elapsed_ms =
-            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_seconds).count();
-
-        std::string info = std::format("info depth {} nodes {} time {} nps {}", ctx.depth,
-                                       ctx.nodes_searched, elapsed_ms, nps);
-
-        if (abs(ctx.best_eval) > CHECKMATE_THRESHOLD) {
-            const int mate_plies = CHECKMATE_BASE - abs(ctx.best_eval);
-            const int mate_in    = (mate_plies + 1) / 2;
-            info += std::format(" score mate {}", ctx.best_eval > 0 ? mate_in : -mate_in);
-        } else {
-            info += std::format(" score cp {}", ctx.best_eval);
-        }
-        return info;
-    }
 
     constexpr void processCommand(std::string_view input) {
         auto words = input | std::ranges::views::split(' ') |
@@ -103,7 +85,9 @@ private:
 
     static inline void handleIsready() { send("readyok"); }
 
-    inline void handleStop() { stop_source_.request_stop(); }
+    inline void handleStop() {
+        search_manager_.stopSearch();
+    }
 
     constexpr void handleSetOption(std::string_view name, std::string_view value) {}
 
@@ -112,7 +96,7 @@ private:
     constexpr void handlePosition(auto iter, auto end_iter) {
         // parse further options startpos fen and moves
         if (std::string_view{*iter} == "startpos") {
-            engine_.setPosToStartpos();
+            search_manager_.setPosToStartpos();
             ++iter;
         } else if (std::string_view{*iter} == "fen") {
             ++iter;
@@ -126,13 +110,13 @@ private:
                 ++iter;
                 ++i;
             }
-            engine_.setPos(fen);
+            search_manager_.setPos(fen);
             return;
         }
         if (iter != end_iter && std::string_view{*iter} == "moves") {
             // parse moves after position
             while (iter != end_iter) {
-                engine_.applyUciMove(std::string_view{*iter});
+                search_manager_.applyUciMove(std::string_view{*iter});
                 ++iter;
             }
         }
@@ -179,20 +163,16 @@ private:
                 ++iter;
             } else if (option == "infinite") {
                 params.infinite = true;
-            } else if (option == "searchmoves") { // searchmoves should be last
+            } else if (option == "searchmoves") { // searchmoves should be last 
                 // Collect subsequent search moves until end.
                 while (iter != end_iter) {
                     params.addSearchMove(std::string_view{*iter});
                     ++iter;
                 }
+            } else if (option == "perft") {
             }
         }
-
-        auto stop_token = stop_source_.get_token();
-        search_thread_ =
-            std::jthread([this, params, stop_token]() { engine_.go(params, stop_token); });
-        search_thread_.join();
-        send("bestmove " + engine_.getBestMoveUci() + "\n" + getInfo());
+        search_manager_.startSearch<FastMoveSink>(params);
     }
 
     constexpr void handlePonderHit() {}
