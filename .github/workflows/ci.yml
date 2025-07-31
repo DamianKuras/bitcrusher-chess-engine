@@ -1,0 +1,96 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup premake5
+        uses: abel0b/setup-premake@v2.4
+        with:
+          version: "5.0.0-beta7"
+
+      - name: Install build dependencies with GCC 14
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-14 g++-14
+
+          # Set GCC 14 as default
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+
+      - name: Generate makefiles
+        run: premake5 gmake2 --with-tests --with-uci --with-benchmarks
+
+      - name: Build tests
+        run: |
+          cd build
+          make Tests config=release_x64
+
+      - name: Run fast tests
+        run: |
+          cd bin/Release
+          ./Tests --gtest_filter=-*slow
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup premake5
+        uses: abel0b/setup-premake@v2.4
+        with:
+          version: "5.0.0-beta7"
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Generate Visual Studio solution
+        run: premake5 vs2022 --with-tests --with-uci --with-benchmarks
+
+      - name: Build with MSBuild
+        run: |
+          cd build
+          msbuild Tests.sln /property:Configuration=Release /property:Platform=x64
+
+      - name: Run tests
+        run: |
+          cd bin/Release
+          ./Tests.exe --gtest_filter=-*slow
+
+  macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup premake5
+        uses: abel0b/setup-premake@v2.4
+        with:
+          version: "5.0.0-beta7"
+
+      - name: Generate Xcode project
+        run: premake5 xcode4 --with-tests --with-uci --with-benchmarks
+
+      - name: Build with Xcode
+        run: |
+          xcodebuild -project bitcrusher.xcodeproj -configuration Release -scheme Tests build
+
+      - name: Run tests
+        run: |
+          cd bin/Release
+          ./Tests --gtest_filter=-*slow
