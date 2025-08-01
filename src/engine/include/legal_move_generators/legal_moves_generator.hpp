@@ -2,8 +2,7 @@
 #define BITCRUSHER_LEGAL_MOVES_GENERATOR_HPP
 
 #include "bishop_legal_moves.hpp"
-#include "bitboard_concepts.hpp"
-#include "checks_pins_detection.hpp"
+#include "concepts.hpp"
 #include "knight_legal_moves.hpp"
 #include "legal_move_generators/king_legal_moves.hpp"
 #include "pawn_legal_moves.hpp"

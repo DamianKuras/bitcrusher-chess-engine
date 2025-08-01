@@ -2,8 +2,8 @@
 #define BITCRUSHER_BISHOP_LEGAL_MOVES_HPP
 
 #include "attack_generators/diagonal_slider_attacks.hpp"
-#include "bitboard_concepts.hpp"
 #include "bitboard_conversions.hpp"
+#include "concepts.hpp"
 #include "move.hpp"
 #include "move_generation_from_bitboard.hpp"
 #include "restriction_context.hpp"

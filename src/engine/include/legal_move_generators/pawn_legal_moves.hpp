@@ -2,12 +2,12 @@
 #define BITCRUSHER_PAWN_LEGAL_MOVES_HPP
 
 #include "attack_generators/pawn_attacks.hpp"
-#include "bitboard_concepts.hpp"
 #include "bitboard_enums.hpp"
 #include "bitboard_offsets.hpp"
-#include "checks_pins_detection.hpp"
+#include "concepts.hpp"
 #include "move_generation_from_bitboard.hpp"
 #include "restriction_context.hpp"
+
 
 namespace bitcrusher {
 
@@ -72,8 +72,8 @@ void generatePawnAttackMoves(const BoardState&         board,
 
     const uint64_t pawns_valid_side_attacks =
         (((generatePawnSingleSideAttacks<Side, PawnAttackDirection>(pawns_not_pinned)) |
-          ((generatePawnSingleSideAttacks<Side, PawnAttackDirection>(
-              pawns_pinned_only_d)))&restriction_context.pinmask_diagonal)) &
+          ((generatePawnSingleSideAttacks<Side, PawnAttackDirection>(pawns_pinned_only_d))) &
+              restriction_context.pinmask_diagonal)) &
         board.getOpponentOccupancy<Side>() & restriction_context.checkmask;
 
     uint64_t pawns_side_attacks_promotions = pawns_valid_side_attacks & PROMOTION_RANKS_MASK;

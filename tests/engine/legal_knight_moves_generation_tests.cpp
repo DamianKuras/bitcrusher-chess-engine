@@ -1,27 +1,28 @@
-#include "bitboard_enums.hpp"
-#include "board_state.hpp"
-#include "legal_moves_generator.hpp"
+#include "legal_move_generators/knight_legal_moves.hpp"
 #include "move_generation_fixture.hpp"
-#include "test_helpers.hpp"
 #include <gtest/gtest.h>
 
 using bitcrusher::BoardState;
 using bitcrusher::Color;
 using bitcrusher::generateLegalKnightMoves;
+using bitcrusher::RestrictionContext;
 using test_helpers::LegalMoveGenerationParametrizedTest;
 using test_helpers::LegalMovesTestCase;
 using test_helpers::TestMoveSink;
 
 namespace {
-void generateLegalKnightMovesWhite(const BoardState& board, TestMoveSink& sink) {
-    generateLegalKnightMoves<TestMoveSink, Color::WHITE>(board, sink);
+void generateLegalKnightMovesWhite(const BoardState&         board,
+                                   const RestrictionContext& restriction_context,
+                                   TestMoveSink&             sink) {
+    generateLegalKnightMoves<TestMoveSink, Color::WHITE>(board, restriction_context, sink);
 }
 
-void generateLegalKnightMovesBlack(const BoardState& board, TestMoveSink& sink) {
-    generateLegalKnightMoves<TestMoveSink, Color::BLACK>(board, sink);
+void generateLegalKnightMovesBlack(const BoardState&         board,
+                                   const RestrictionContext& restriction_context,
+                                   TestMoveSink&             sink) {
+    generateLegalKnightMoves<TestMoveSink, Color::BLACK>(board, restriction_context, sink);
 }
 } // namespace
-
 
 const std::array<LegalMovesTestCase, 8> LEGAL_KNIGHT_MOVES_TEST_CASES{{
     {.name           = "starting chess position white knight moves",

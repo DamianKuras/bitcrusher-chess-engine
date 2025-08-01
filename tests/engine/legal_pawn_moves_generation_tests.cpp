@@ -1,23 +1,27 @@
 #include "bitboard_enums.hpp"
-#include "legal_moves_generator.hpp"
+#include "legal_move_generators/pawn_legal_moves.hpp"
 #include "move_generation_fixture.hpp"
-#include "test_helpers.hpp"
 #include <gtest/gtest.h>
 
 using bitcrusher::BoardState;
 using bitcrusher::Color;
 using bitcrusher::generateLegalPawnMoves;
+using bitcrusher::RestrictionContext;
 using test_helpers::LegalMoveGenerationParametrizedTest;
 using test_helpers::LegalMovesTestCase;
 using test_helpers::TestMoveSink;
 
 namespace {
-void generateLegalPawnMovesWhite(const BoardState& board, TestMoveSink& sink) {
-    generateLegalPawnMoves<TestMoveSink, Color::WHITE>(board, sink);
+void generateLegalPawnMovesWhite(const BoardState&         board,
+                                 const RestrictionContext& restriction_context,
+                                 TestMoveSink&             sink) {
+    generateLegalPawnMoves<TestMoveSink, Color::WHITE>(board, restriction_context, sink);
 }
 
-void generateLegalPawnMovesBlack(const BoardState& board, TestMoveSink& sink) {
-    generateLegalPawnMoves<TestMoveSink, Color::BLACK>(board, sink);
+void generateLegalPawnMovesBlack(const BoardState&         board,
+                                 const RestrictionContext& restriction_context,
+                                 TestMoveSink&             sink) {
+    generateLegalPawnMoves<TestMoveSink, Color::BLACK>(board, restriction_context, sink);
 }
 } // namespace
 

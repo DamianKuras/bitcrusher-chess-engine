@@ -1,23 +1,27 @@
 #include "bitboard_enums.hpp"
-#include "legal_moves/rook_legal_moves.hpp"
+#include "legal_move_generators/rook_legal_moves.hpp"
 #include "move_generation_fixture.hpp"
-#include "test_helpers.hpp"
 
 #include <gtest/gtest.h>
 
 using bitcrusher::BoardState;
 using bitcrusher::Color;
+using bitcrusher::RestrictionContext;
 using test_helpers::LegalMoveGenerationParametrizedTest;
 using test_helpers::LegalMovesTestCase;
 using test_helpers::TestMoveSink;
 
 namespace {
-void generateLegalRookMovesWhite(const BoardState& board, TestMoveSink& sink) {
-    generateLegalRookMoves<TestMoveSink, Color::WHITE>(board, sink);
+void generateLegalRookMovesWhite(const BoardState&         board,
+                                 const RestrictionContext& restriction_context,
+                                 TestMoveSink&             sink) {
+    generateLegalRookMoves<TestMoveSink, Color::WHITE>(board, restriction_context, sink);
 }
 
-void generateLegalRookMovesBlack(const BoardState& board, TestMoveSink& sink) {
-    generateLegalRookMoves<TestMoveSink, Color::BLACK>(board, sink);
+void generateLegalRookMovesBlack(const BoardState&         board,
+                                 const RestrictionContext& restriction_context,
+                                 TestMoveSink&             sink) {
+    generateLegalRookMoves<TestMoveSink, Color::BLACK>(board, restriction_context, sink);
 }
 } // namespace
 

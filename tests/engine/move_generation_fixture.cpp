@@ -1,6 +1,10 @@
 #include "move_generation_fixture.hpp"
+#include "bitboard_enums.hpp"
+#include "fen_formatter.hpp"
 #include <algorithm>
 #include <string>
+
+using bitcrusher::Color;
 
 namespace test_helpers {
 
@@ -11,9 +15,15 @@ static std::ostream& operator<<(std::ostream& os, const LegalMovesTestCase& test
 void LegalMoveGenerationParametrizedTest::runTest() {
     const auto& test_case = GetParam();
     parseFEN(test_case.fen, board_);
+    RestrictionContext restriction_context;
+    if (board_.isWhiteMove()) {
+        updateRestrictionContext<Color::WHITE>(board_, restriction_context);
+    } else {
+        updateRestrictionContext<Color::BLACK>(board_, restriction_context);
+    }
     sink_.clear(); // Reset sink
 
-    test_case.move_generator(board_, sink_);
+    test_case.move_generator(board_, restriction_context, sink_);
 
     for (const std::string& expected_move : test_case.expected_moves) {
         EXPECT_TRUE(sink_.moves.contains(expected_move))

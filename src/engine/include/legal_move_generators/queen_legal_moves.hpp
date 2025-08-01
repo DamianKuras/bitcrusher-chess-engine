@@ -1,7 +1,7 @@
 #ifndef BITCRUSHER_QUEEN_LEGAL_MOVES_HPP
 #define BITCRUSHER_QUEEN_LEGAL_MOVES_HPP
 
-#include "bitboard_concepts.hpp"
+#include "concepts.hpp"
 #include "restriction_context.hpp"
 
 namespace bitcrusher {

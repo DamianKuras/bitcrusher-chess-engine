@@ -1,7 +1,7 @@
 #ifndef BITCRUSHER_MOVE_GENERATION_FROM_BITBOARD_HPP
 #define BITCRUSHER_MOVE_GENERATION_FROM_BITBOARD_HPP
 
-#include "bitboard_concepts.hpp"
+#include "concepts.hpp"
 #include "move.hpp"
 
 namespace bitcrusher {

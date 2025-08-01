@@ -3,7 +3,7 @@
 
 #include "attack_generators/king_attacks.hpp"
 #include "attack_generators/squares_attacked.hpp"
-#include "bitboard_concepts.hpp"
+#include "concepts.hpp"
 #include "move_generation_from_bitboard.hpp"
 #include "restriction_context.hpp"
 

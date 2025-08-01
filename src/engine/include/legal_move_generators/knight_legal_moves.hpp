@@ -2,7 +2,7 @@
 #define BITCRUSHER_KNIGHT_LEGAL_MOVES_HPP
 
 #include "attack_generators/knight_attacks.hpp"
-#include "bitboard_concepts.hpp"
+#include "concepts.hpp"
 #include "move_generation_from_bitboard.hpp"
 #include "restriction_context.hpp"
 

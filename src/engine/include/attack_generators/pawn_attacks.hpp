@@ -1,9 +1,9 @@
 #ifndef BITCRUSHER_PAWN_ATTACKS_HPP
 #define BITCRUSHER_PAWN_ATTACKS_HPP
 
-#include "bitboard_concepts.hpp"
 #include "bitboard_enums.hpp"
 #include "bitboard_offsets.hpp"
+#include "concepts.hpp"
 #include "file_rank_bitboards.hpp"
 
 namespace bitcrusher {

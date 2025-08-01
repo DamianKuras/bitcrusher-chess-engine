@@ -1,24 +1,28 @@
 #include "bitboard_enums.hpp"
-#include "legal_moves_generator.hpp"
+#include "legal_move_generators/bishop_legal_moves.hpp"
 #include "move_generation_fixture.hpp"
-#include "test_helpers.hpp"
-
+#include "restriction_context.hpp"
 #include <gtest/gtest.h>
 
 using bitcrusher::BoardState;
 using bitcrusher::Color;
 using bitcrusher::generateLegalBishopMoves;
+using bitcrusher::RestrictionContext;
 using test_helpers::LegalMoveGenerationParametrizedTest;
 using test_helpers::LegalMovesTestCase;
 using test_helpers::TestMoveSink;
 
 namespace {
-void generateLegalBishopMovesWhite(const BoardState& board, TestMoveSink& sink) {
-    generateLegalBishopMoves<TestMoveSink, Color::WHITE>(board, sink);
+void generateLegalBishopMovesWhite(const BoardState&         board,
+                                   const RestrictionContext& restriction_context,
+                                   TestMoveSink&             sink) {
+    generateLegalBishopMoves<TestMoveSink, Color::WHITE>(board, restriction_context, sink);
 }
 
-void generateLegalBishopMovesBlack(const BoardState& board, TestMoveSink& sink) {
-    generateLegalBishopMoves<TestMoveSink, Color::BLACK>(board, sink);
+void generateLegalBishopMovesBlack(const BoardState&         board,
+                                   const RestrictionContext& restriction_context,
+                                   TestMoveSink&             sink) {
+    generateLegalBishopMoves<TestMoveSink, Color::BLACK>(board, restriction_context, sink);
 }
 } // namespace
 
