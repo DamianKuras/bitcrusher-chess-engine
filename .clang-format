@@ -8,7 +8,7 @@ AllowShortLoopsOnASingleLine: false
 
 BraceWrapping:
   AfterClass: false
-  AfterControlStatement: Never
+  AfterControlStatement: false
   AfterEnum: false
   AfterFunction: false
   AfterNamespace: false
@@ -33,11 +33,11 @@ AlignOperands: Align
 AlignTrailingComments: true
 PointerAlignment: Left
 AllowAllArgumentsOnNextLine: true
-AllowAllConstructorInitializersOnNextLine : true
-AllowAllParametersOfDeclarationOnNextLine : true
+AllowAllConstructorInitializersOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
 
 # Line breaking
-ColumnLimit: 100   
+ColumnLimit: 100
 BreakBeforeBraces: Custom
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeColon
