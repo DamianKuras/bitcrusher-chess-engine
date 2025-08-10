@@ -4,15 +4,15 @@
 #include "fen_formatter.hpp"
 #include "legal_move_generators/legal_moves_generator.hpp"
 #include "move.hpp"
-#include "move_maker.hpp"
+#include "move_processor.hpp"
 #include "gtest/gtest.h"
 
 using bitcrusher::BoardState;
 using bitcrusher::Color;
 using bitcrusher::generateLegalMoves;
-using bitcrusher::makeMove;
 using bitcrusher::Move;
-using bitcrusher::unmakeMove;
+using bitcrusher::RestrictionContext;
+using bitcrusher::updateRestrictionContext;
 using test_helpers::TestPerftMoveSink;
 
 namespace {
@@ -20,10 +20,10 @@ namespace {
 template <Color SideToMove>
 [[nodiscard]] uint64_t perft(int depth, BoardState& board, TestPerftMoveSink& sink) {
     uint64_t leave_node_count = 0;
-    board.recalculateOccupancy();
-    updateRestrictionContext<SideToMove>(board, board.restriction_context);
-    sink.depth = depth;
-    generateLegalMoves<TestPerftMoveSink, SideToMove>(board, sink);
+    sink.depth                = depth;
+    RestrictionContext restriction_context;
+    updateRestrictionContext<SideToMove>(board, restriction_context);
+    generateLegalMoves<SideToMove>(board, restriction_context, sink);
 
     std::vector<Move> moves = std::move(sink.moves);
     sink.clearMoves();
@@ -31,13 +31,11 @@ template <Color SideToMove>
     if (depth == test_helpers::LEAF_DEPTH) {
         return static_cast<uint64_t>(moves.size());
     }
-
+    bitcrusher::MoveProcessor move_processor;
     for (const auto& move : moves) {
-        board.recalculateOccupancy();
-        updateRestrictionContext<SideToMove>(board, board.restriction_context);
-        makeMove(board, move);
+        move_processor.applyMove(board, move);
         leave_node_count += perft<! SideToMove>(depth - 1, board, sink);
-        unmakeMove(board, move);
+        move_processor.undoMove(board, move);
     }
 
     return leave_node_count;

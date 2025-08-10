@@ -8,7 +8,6 @@
 #include "move_generation_from_bitboard.hpp"
 #include "restriction_context.hpp"
 
-
 namespace bitcrusher {
 
 template <Color Side, Direction PawnAttackDirection>
@@ -67,14 +66,15 @@ void generatePawnAttackMoves(const BoardState&         board,
                              uint64_t                  pawns_pinned_only_d,
                              const RestrictionContext& restriction_context,
                              MoveSinkT&                sink) {
-    // const uint64_t pawns_left_attacks = generatePawnSingleSideAttacks<Side,
-    // PawnAttackDirection>();
+    const uint64_t pawns_not_pinned_attacks =
+        generatePawnSingleSideAttacks<Side, PawnAttackDirection>(pawns_not_pinned);
+    const uint64_t pawns_pinned_attacks =
+        (generatePawnSingleSideAttacks<Side, PawnAttackDirection>(pawns_pinned_only_d)) &
+        restriction_context.pinmask_diagonal;
 
-    const uint64_t pawns_valid_side_attacks =
-        (((generatePawnSingleSideAttacks<Side, PawnAttackDirection>(pawns_not_pinned)) |
-          ((generatePawnSingleSideAttacks<Side, PawnAttackDirection>(pawns_pinned_only_d))) &
-              restriction_context.pinmask_diagonal)) &
-        board.getOpponentOccupancy<Side>() & restriction_context.checkmask;
+    const uint64_t pawns_valid_side_attacks = (pawns_not_pinned_attacks | pawns_pinned_attacks) &
+                                              board.getOpponentOccupancy<Side>() &
+                                              restriction_context.checkmask;
 
     uint64_t pawns_side_attacks_promotions = pawns_valid_side_attacks & PROMOTION_RANKS_MASK;
     uint64_t pawns_side_attacks_non_promotions =

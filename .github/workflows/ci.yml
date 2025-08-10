@@ -32,7 +32,7 @@ jobs:
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
 
       - name: Generate makefiles
-        run: premake5 gmake2 --with-tests --with-uci --with-benchmarks
+        run: premake5 gmake2 --with-tests
 
       - name: Build tests
         run: |
@@ -59,12 +59,12 @@ jobs:
         uses: microsoft/setup-msbuild@v2
 
       - name: Generate Visual Studio solution
-        run: premake5 vs2022 --with-tests --with-uci --with-benchmarks
+        run: premake5 vs2022 --with-tests
 
       - name: Build with MSBuild
         run: |
           cd build
-          msbuild Tests.sln /property:Configuration=Release /property:Platform=x64
+          msbuild Tests.vcxproj /property:Configuration=Release /property:Platform=x64
 
       - name: Run tests
         run: |
@@ -72,11 +72,14 @@ jobs:
           ./Tests.exe --gtest_filter=-*slow
 
   macos:
-    runs-on: macos-latest
+    runs-on: macos-15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Use Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.0.app
 
       - name: Setup premake5
         uses: abel0b/setup-premake@v2.4
@@ -84,11 +87,21 @@ jobs:
           version: "5.0.0-beta7"
 
       - name: Generate Xcode project
-        run: premake5 xcode4 --with-tests --with-uci --with-benchmarks
+        run: premake5 xcode4 --with-tests
 
       - name: Build with Xcode
         run: |
-          xcodebuild -project bitcrusher.xcodeproj -configuration Release -scheme Tests build
+          cd build
+          xcodebuild \
+            -project Tests.xcodeproj \
+            -scheme Tests \
+            -configuration Release \
+            -sdk macosx \
+            -derivedDataPath ../obj/Release \
+            SYMROOT=../bin/Release \
+            CXXFLAGS="-std=c++23" \
+            CLANG_ENABLE_COROUTINES=YES \
+          | xcpretty
 
       - name: Run tests
         run: |

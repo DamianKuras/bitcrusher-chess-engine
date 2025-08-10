@@ -1,8 +1,11 @@
+#ifndef BITCRUSHER_ZOBRIST_HASHER_HPP
+#define BITCRUSHER_ZOBRIST_HASHER_HPP
 
 #include "bitboard_conversions.hpp"
 #include "bitboard_enums.hpp"
 #include "board_state.hpp"
 #include "random"
+#include <cassert>
 
 namespace bitcrusher {
 
@@ -69,3 +72,5 @@ public:
     }
 };
 } // namespace bitcrusher
+
+#endif // BITCRUSHER_ZOBRIST_HASHER_HPP

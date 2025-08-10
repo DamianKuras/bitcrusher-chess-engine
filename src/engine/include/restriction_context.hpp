@@ -99,8 +99,7 @@ inline void updateRestrictionContext(const BoardState&   board,
     restriction_context.reset();
     std::uint64_t our_king_bitboard = board.getBitboard<PieceType::KING, Side>();
 
-    std::uint64_t enemy_occupancy = board.getOpponentOccupancy<Side>();
-    std::uint64_t our_occupancy   = board.getOwnOccupancy<Side>();
+    std::uint64_t our_occupancy = board.getOwnOccupancy<Side>();
 
     // --- Pawn Checks ---
     std::uint64_t potential_checkers_pawns = generatePawnsAttacks<Side>(our_king_bitboard);

@@ -8,6 +8,7 @@ ensure_dependency(
 project "BenchmarkRunner"
     kind "ConsoleApp"
     defines { "BENCHMARK_STATIC_DEFINE" }
+    defines { "BENCHMARK_ENABLE_LIBPFM" }
     dependson{
         "Engine", 
         "GoogleBenchmark"
@@ -22,7 +23,8 @@ project "BenchmarkRunner"
     }
     includedirs {
         path.join(google_benchmark_dir,"include"),
-        ENGINE_INCLUDE_DIR
+        ENGINE_INCLUDE_DIR,
+        UCI_DIR
     }
 
 -- Dependency GoogleBenchmark project as a static library

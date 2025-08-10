@@ -261,7 +261,7 @@ TEST(MoveFromUci, BlackQueensideCastling) {
     board.setSideToMove(Color::BLACK);
     board.addPieceToSquare(Piece::BLACK_KING, Square::E8);
     board.addPieceToSquare(Piece::BLACK_ROOK, Square::A8);
-    board.addBlackKingsideCastlingRight();
+    board.addBlackQueensideCastlingRight();
 
     Move m = moveFromUci("e8c8", board);
 

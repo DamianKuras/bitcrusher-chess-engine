@@ -1,8 +1,9 @@
 #ifndef BITCRUSHER_MOVE_SINK_HPP
 #define BITCRUSHER_MOVE_SINK_HPP
 
-#include "bitboard_concepts.hpp"
+#include "concepts.hpp"
 #include "move.hpp"
+#include <cassert>
 
 namespace bitcrusher {
 
@@ -14,7 +15,12 @@ struct FastMoveSink {
 
     void clear() noexcept { count = 0; }
 
-    void operator()(const Move& move) noexcept { moves[count++] = move; }
+    void operator()(const Move& move) noexcept {
+        assert(count < MAX_LEGAL_MOVES);
+        moves[count++] = move;
+    }
+
+    [[nodiscard]] bool empty() const { return count == 0; }
 };
 
 static_assert(MoveSink<FastMoveSink>);

@@ -3,6 +3,7 @@
 
 #include "bitboard_enums.hpp"
 #include "board_state.hpp"
+#include <format>
 #include <string>
 
 namespace bitcrusher {
@@ -16,6 +17,7 @@ enum class MoveType : uint8_t {
     EN_PASSANT,
     PROMOTION,
     PROMOTION_CAPTURE,
+    NULL_MOVE,
 };
 
 class Move final {
@@ -58,6 +60,8 @@ public:
     [[nodiscard]] bool isQueensideCastle() const noexcept {
         return flag_ == MoveType::QUEENSIDE_CASTLE;
     }
+
+    [[nodiscard]] bool isNullMove() const noexcept { return flag_ == MoveType::NULL_MOVE; }
 
     // Factory functions for creating moves:
     [[nodiscard]] static Move
@@ -149,20 +153,11 @@ public:
         }
     }
 
-    Move() = default;
-
+    constexpr Move() noexcept                    = default;
     constexpr bool operator==(const Move&) const = default;
 
-    [[nodiscard]] constexpr std::string toUci() const {
-        const auto [from_file, from_rank] = convert::toChars(from_square_);
-        const auto [to_file, to_rank]     = convert::toChars(to_square_);
-
-        if (! isPromotion()) {
-            return std::format("{}{}{}{}", from_file, from_rank, to_file, to_rank);
-        }
-
-        const char promo_char = convert::toPromotionUci(moving_piece_);
-        return std::format("{}{}{}{}{}", from_file, from_rank, to_file, to_rank, promo_char);
+    static Move none() {
+        return {Square::A1, Square::A1, PieceType::NONE, MoveType::NULL_MOVE, PieceType::NONE};
     }
 
 private:
@@ -181,6 +176,21 @@ private:
           captured_piece_{captured_piece} {}
 };
 
+[[nodiscard]] constexpr std::string toUci(const Move& move) {
+    const auto [from_file, from_rank] = convert::toChars(move.fromSquare());
+    const auto [to_file, to_rank]     = convert::toChars(move.toSquare());
+
+    if (! move.isPromotion()) {
+        return std::format("{}{}{}{}", from_file, from_rank, to_file, to_rank);
+    }
+
+    const char promo_char = convert::toPromotionUci(move.movingPiece());
+    return std::format("{}{}{}{}{}", from_file, from_rank, to_file, to_rank, promo_char);
+}
+
 } // namespace bitcrusher
+
+static_assert(std::is_trivially_copyable_v<bitcrusher::Move>, "Move must be trivially copyable");
+static_assert(std::is_copy_constructible_v<bitcrusher::Move>, "Move must be copy constructible");
 
 #endif // BITCRUSHER_MOVE_HPP

@@ -22,7 +22,6 @@ workspace "BitcrusherChessEngine"
     cppdialect "C++23"
     targetdir(path.join(BIN_DIR,"%{cfg.buildcfg}"))
     objdir(path.join(OBJ_DIR,"%{cfg.buildcfg}", "%{prj.name}"))
-    warnings "Extra"
     filter {"configurations:Debug"}
         defines {"DEBUG"}
         symbols "On"
@@ -43,6 +42,9 @@ workspace "BitcrusherChessEngine"
 
     filter {"platforms:x64"}
         architecture "x64"
+
+    filter "system:linux"
+        links { "atomic" }
 
     newoption {
         trigger = "with-tests",

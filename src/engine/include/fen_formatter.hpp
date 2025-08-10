@@ -182,7 +182,7 @@ static inline Move moveFromUci(std::string_view uci_string, const BoardState& bo
     if (from == Square::E1 && to == Square::C1 && board.hasWhiteQueensideCastlingRight()) {
         return Move::createCastlingMove<Color::WHITE, Side::QUEENSIDE>();
     }
-    if (from == Square::E8 && to == Square::G8 && board.hasWhiteKingsideCastlingRight()) {
+    if (from == Square::E8 && to == Square::G8 && board.hasBlackKingsideCastlingRight()) {
         return Move::createCastlingMove<Color::WHITE, Side::KINGSIDE>();
     }
     if (from == Square::E8 && to == Square::C8 && board.hasBlackQueensideCastlingRight()) {

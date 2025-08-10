@@ -1,8 +1,8 @@
 #ifndef BITCRUSHER_PERFT_FIXTURE_HPP
 #define BITCRUSHER_PERFT_FIXTURE_HPP
 
-#include "bitboard_concepts.hpp"
 #include "board_state.hpp"
+#include "concepts.hpp"
 #include "move.hpp"
 #include <gtest/gtest.h>
 #include <string>
