@@ -85,7 +85,7 @@ template <Color Side> constexpr Color toOppositeColor() {
 }
 
 // clang-format off
-constexpr std::array<Diagonal, 64> SQUARE_TO_DIAGONAL = {
+constexpr std::array<Diagonal, SQUARE_COUNT> SQUARE_TO_DIAGONAL = {
     // rank 8 (a8-h8)
     Diagonal::A8H1, Diagonal::B8H2, Diagonal::C8H3, Diagonal::D8H4, Diagonal::E8H5, Diagonal::F8H6, Diagonal::G8H7, Diagonal::H8,
     // rank 7 (a7-h7)
@@ -105,7 +105,7 @@ constexpr std::array<Diagonal, 64> SQUARE_TO_DIAGONAL = {
 };
 
 // Lookup table mapping each square (bitboard index 0=a1,...,63=h8) to its CounterDiagonal enum
-constexpr std::array<CounterDiagonal, 64> SQUARE_TO_COUNTER_DIAGONAL = {{
+constexpr std::array<CounterDiagonal, SQUARE_COUNT> SQUARE_TO_COUNTER_DIAGONAL = {{
     // rank 8 (a8-h8)
     CounterDiagonal::A8,   CounterDiagonal::A7B8, CounterDiagonal::A6C8, CounterDiagonal::A5D8, CounterDiagonal::A4E8, CounterDiagonal::A3F8, CounterDiagonal::A2G8, CounterDiagonal::A1H8,
     // rank 7 (a7-h7)

@@ -11,6 +11,8 @@
 
 namespace test_helpers {
 
+using bitcrusher::toUci;
+
 struct TestMoveSink {
     std::unordered_set<std::string> moves;
 

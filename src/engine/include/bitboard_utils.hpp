@@ -4,27 +4,24 @@
 #include "bitboard_conversions.hpp"
 #include "bitboard_enums.hpp"
 #include <bit>
-#include <cassert>
 #include <cstdint>
 
 namespace bitcrusher::utils {
 
-[[nodiscard]] static constexpr bool isSquareSet(uint64_t bitboard,
-                                                Square square) noexcept {
+[[nodiscard]] static constexpr bool isSquareSet(uint64_t bitboard, Square square) noexcept {
     return (bitboard & convert::toBitboard(square)) != 0;
 }
 
-static constexpr void setSquare(uint64_t &bitboard, Square square) noexcept {
+static constexpr void setSquare(uint64_t& bitboard, Square square) noexcept {
     bitboard |= convert::toBitboard(square);
 }
 
-static constexpr void clearSquare(uint64_t &bitboard, Square square) noexcept {
+static constexpr void clearSquare(uint64_t& bitboard, Square square) noexcept {
     bitboard &= ~convert::toBitboard(square);
 }
 
 // pops the first set square (LSB to MSB)
-[[nodiscard]] static constexpr Square
-popFirstSetSquare(uint64_t &bitboard) noexcept {
+[[nodiscard]] static constexpr Square popFirstSetSquare(uint64_t& bitboard) noexcept {
     auto const index = static_cast<Square>(std::countr_zero(bitboard));
     bitboard &= bitboard - 1;
     return index;
@@ -32,10 +29,8 @@ popFirstSetSquare(uint64_t &bitboard) noexcept {
 
 // Toggle bits at the source and destination squares
 // Preconditions: the source square is set and the destination square is clear
-static constexpr void toggleSquares(uint64_t &bitboard, Square source,
-                                    Square destination) {
-    bitboard ^=
-        (convert::toBitboard(source) | convert::toBitboard(destination));
+static constexpr void toggleSquares(uint64_t& bitboard, Square source, Square destination) {
+    bitboard ^= (convert::toBitboard(source) | convert::toBitboard(destination));
 }
 
 // Shifts bitboard towards direction without validation
@@ -51,6 +46,10 @@ static constexpr uint64_t shift(uint64_t bitboard, Direction direction) {
     }
     // direction == Direction::RIGHT
     return bitboard << 1;
+}
+
+static constexpr Square getFirstSetSquare(uint64_t bitboard) {
+    return static_cast<Square>(std::countr_zero(bitboard));
 }
 
 } // namespace bitcrusher::utils

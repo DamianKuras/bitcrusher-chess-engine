@@ -97,10 +97,12 @@ public:
     constexpr void addPieceToSquare(PieceType piece_t, Square square) noexcept {
         Piece piece = convert::toPiece<Side>(piece_t);
         utils::setSquare(bitboards_[piece], square);
+        calculateOccupancies();
     }
 
-    void addPieceToSquare(Piece piece, Square square) noexcept {
+    constexpr void addPieceToSquare(Piece piece, Square square) noexcept {
         utils::setSquare(bitboards_[piece], square);
+        calculateOccupancies();
     }
 
     template <Color SideToMove>
@@ -178,7 +180,9 @@ public:
     }
 
     // Counters
-    void setHalfmoveClock(uint8_t halfmove_clock) noexcept { halfmove_clock_ = halfmove_clock; }
+    constexpr void setHalfmoveClock(uint8_t halfmove_clock) noexcept {
+        halfmove_clock_ = halfmove_clock;
+    }
 
     void resetHalfmoveClock() noexcept { halfmove_clock_ = 0; }
 
@@ -274,7 +278,7 @@ public:
 
     bool operator==(const BoardState& rhs) const = default;
 
-    void calculateOccupancies() {
+    constexpr void calculateOccupancies() {
         white_occupancy_ = generateWhiteOccupancy();
         black_occupancy_ = generateBlackOccupancy();
         all_occupancy_   = white_occupancy_ | black_occupancy_;

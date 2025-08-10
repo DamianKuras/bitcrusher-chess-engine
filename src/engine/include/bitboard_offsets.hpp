@@ -17,10 +17,10 @@ struct RepeatedDirection {
 
 // Encapsulates both the wrap prevention mask and the computed shift delta
 struct BitboardOffset {
-    uint64_t wrap_prevention_mask;
-    int      shift_value;
+    std::uint64_t wrap_prevention_mask;
+    int           shift_value;
 
-    consteval BitboardOffset(uint64_t mask, int shift)
+    consteval BitboardOffset(std::uint64_t mask, int shift)
         : wrap_prevention_mask(mask), shift_value(shift) {}
 };
 
@@ -41,7 +41,7 @@ template <auto... Directions>
             offset_delta += convert::toDelta(direction.dir) * direction.count;
         }
     };
-    (accumulate_offset(Directions), ...); 
+    (accumulate_offset(Directions), ...);
     return offset_delta;
 }
 
@@ -69,14 +69,14 @@ template <auto... Directions>
     };
     (count_files(Directions), ...);
 
-    uint64_t prevention_mask = 0ULL;
+    uint64_t prevention_mask{0ULL};
     if (left_file_count > 0) {
-        for (int i = 0; i < left_file_count; ++i) {
+        for (int i{0}; i < left_file_count; ++i) {
             prevention_mask |= FILE_BITBOARDS[i];
         }
     }
     if (right_file_count > 0) {
-        for (int i = 0; i < right_file_count; ++i) {
+        for (int i{0}; i < right_file_count; ++i) {
             prevention_mask |= FILE_BITBOARDS[BOARD_DIMENSION - 1 - i];
         }
     }
@@ -100,8 +100,8 @@ template <BitboardOffset Offset>
 template <auto... Directions>
     requires(DirectionVariant<decltype(Directions)> && ...)
 consteval BitboardOffset makeOffset() noexcept {
-    uint64_t mask  = computeWrapPreventionMask<Directions...>();
-    int      shift = calculateOffset<Directions...>();
+    uint64_t mask{computeWrapPreventionMask<Directions...>()};
+    int      shift{calculateOffset<Directions...>()};
     return BitboardOffset{mask, shift};
 }
 
@@ -109,8 +109,22 @@ consteval BitboardOffset makeOffset() noexcept {
 template <auto... Directions>
     requires(DirectionVariant<decltype(Directions)> && ...)
 constexpr uint64_t shiftBitboardNoWrap(uint64_t bitboard) noexcept {
-    constexpr BitboardOffset OFFSET = makeOffset<Directions...>();
+    constexpr BitboardOffset OFFSET{makeOffset<Directions...>()};
     return safeShift<OFFSET>(bitboard);
+}
+
+template <Direction Dir> consteval Direction getOppositeDirection() {
+    if constexpr (Dir == Direction::TOP) {
+        return Direction::BOTTOM;
+    }
+    if constexpr (Dir == Direction::BOTTOM) {
+        return Direction::TOP;
+    }
+    if constexpr (Dir == Direction::LEFT) {
+        return Direction::RIGHT;
+    }
+    // (dir == Direction::RIGHT)
+    return Direction::LEFT;
 }
 
 } // namespace bitcrusher::offset

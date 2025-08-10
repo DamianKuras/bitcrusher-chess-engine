@@ -9,10 +9,14 @@ namespace bitcrusher {
 
 inline constexpr int BOARD_DIMENSION{8};
 
+inline constexpr int PIECE_COUNT = 12;
+
+inline constexpr int CASTLING_RIGHTS_COUNT = 4;
+
 inline constexpr std::uint8_t PIECE_COUNT_PER_SIDE = 6;
 
-// constexpr std::string_view INITIAL_POSITION_FEN =
-//     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+inline constexpr std::string_view INITIAL_POSITION_FEN =
+    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 inline constexpr std::uint64_t EMPTY_BITBOARD{0};
 
@@ -211,7 +215,6 @@ public:
         }
     }
 
-    // Optionally expose underlying data for iteration or std::get
     constexpr const std::array<T, Size>& data() const noexcept { return data_; }
 
     constexpr std::array<T, Size>& data() noexcept { return data_; }
@@ -220,8 +223,6 @@ public:
 
     bool operator==(const EnumIndexedArray& rhs) const = default;
 };
-
-// clang-format on
 
 } // namespace bitcrusher
 
