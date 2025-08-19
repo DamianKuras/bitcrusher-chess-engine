@@ -1,3 +1,4 @@
+require "export-compile-commands"
 -- Helper function: ensures a dependency is present by downloading and extracting it if needed
 function ensure_dependency(name, url, extracted_dir)
     if not os.isdir(extracted_dir) then

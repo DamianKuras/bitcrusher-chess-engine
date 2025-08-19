@@ -1,0 +1,9 @@
+CompileFlags:
+  CompilationDatabase: './build/release_x64/compile_commands.json'
+  Add: [-isystem,-j=1]
+
+# Disable slow background indexing for dependencies
+If:
+  PathMatch: /deps.*
+Index:
+  Background: Skip
