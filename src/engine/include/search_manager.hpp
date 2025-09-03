@@ -1,6 +1,6 @@
-#include "bitboard_concepts.hpp"
 #include "bitboard_enums.hpp"
 #include "board_state.hpp"
+#include "concepts.hpp"
 #include "fen_formatter.hpp"
 #include "search.hpp"
 #include "zobrist_hasher.hpp"
@@ -8,9 +8,9 @@
 #include <climits>
 #include <cstdint>
 #include <functional>
+#include <iostream>
 #include <stop_token>
 #include <thread>
-#include <utility>
 #include <vector>
 
 namespace bitcrusher {
@@ -32,7 +32,8 @@ public:
         start_time_                = std::chrono::steady_clock::now();
         search_ctx_.nodes_searched = 0;
         stop_source_               = std::stop_source();
-        is_searching_              = true;
+
+        is_searching_ = true;
         for (int i = 0; i < max_cores_; i++) {
             BoardState thread_board = board_; // Copy for thread safety
             active_threads_.fetch_add(1);
@@ -43,7 +44,10 @@ public:
         }
     }
 
-    void changeMaxCores(int cores_limit) { max_cores_ = cores_limit; }
+    void setMaxCores(int cores_limit) {
+        std::cout << cores_limit << '\n';
+        max_cores_ = cores_limit;
+    }
 
     void stopSearch() {
         stop_source_.request_stop();
@@ -56,7 +60,7 @@ public:
         onSearchFinished_();
     }
 
-    uint64_t getNodeCount() const { return search_ctx_.nodes_searched.load(); };
+    [[nodiscard]] uint64_t getNodeCount() const { return search_ctx_.nodes_searched.load(); };
 
     template <MoveSink MoveSinkT>
     void go(const SearchParameters& search_parameters,
@@ -64,11 +68,12 @@ public:
             BoardState              board,
             std::stop_token         st) {
         if (board.isWhiteMove()) {
+
             bitcrusher::search<bitcrusher::Color::WHITE, MoveSinkT>(
-                search_ctx, board, search_parameters.max_depth, INT_MIN, INT_MAX, st);
+                search_ctx, board, search_parameters, INT_MIN, INT_MAX, st, start_time_);
         } else {
             bitcrusher::search<bitcrusher::Color::BLACK, MoveSinkT>(
-                search_ctx, board, search_parameters.max_depth, INT_MIN, INT_MAX, st);
+                search_ctx, board, search_parameters, INT_MIN, INT_MAX, st, start_time_);
         }
 
         if (active_threads_.fetch_sub(1) == 1) { // Last thread completes
@@ -79,8 +84,8 @@ public:
         }
     }
 
-    void setOnSearchFinished(std::function<void()> callback) {
-        onSearchFinished_ = std::move(callback);
+    void setOnSearchFinished(const std::function<void()>& callback) {
+        onSearchFinished_ = callback;
     }
 
     void waitUntilSearchFinished() {
@@ -90,6 +95,8 @@ public:
     }
 
     constexpr void setPosToStartpos() { parseFEN(INITIAL_POSITION_FEN, board_); }
+
+    inline void setHashMBSize(int size) { search_ctx_.tt.setMBSize(size); }
 
     void setPos(std::string_view fen) { parseFEN(fen, board_); }
 
@@ -102,6 +109,8 @@ public:
         auto     entry          = search_ctx_.tt.getEntry(start_pos_hash);
         return toUci(entry.best_move);
     }
+    
+
 
 private:
     std::vector<std::jthread>                          workers_;

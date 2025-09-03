@@ -1,8 +1,9 @@
 #ifndef BITCRUSHER_UCI_HANDLER_HPP
 #define BITCRUSHER_UCI_HANDLER_HPP
 
-#include "engine.hpp"
 #include "engine_debug_logger.hpp"
+#include "move_sink.hpp"
+#include "search_manager.hpp"
 #include "uci_constants.hpp"
 #include <iostream>
 #include <ranges>
@@ -17,7 +18,7 @@ public:
     UCIHandler() {
         search_manager_.setOnSearchFinished([this]() {
             std::string best_move = search_manager_.bestMoveUci();
-            send("bestmove " + best_move );
+            send("bestmove " + best_move);
         });
     }
 
@@ -34,8 +35,8 @@ public:
     }
 
 private:
-    bool        new_game_{true};
-    std::string line_;
+    bool                      new_game_{true};
+    std::string               line_;
     bitcrusher::SearchManager search_manager_;
 
     static inline void send(std::string_view msg) {
@@ -46,7 +47,6 @@ private:
 
         std::cout << msg << "\n" << std::flush;
     }
-
 
     constexpr void processCommand(std::string_view input) {
         auto words = input | std::ranges::views::split(' ') |
@@ -69,6 +69,7 @@ private:
         } else if (command_token == "setoption") {
             ++words_iter; // skips over "name" token
             std::string_view option_name{*words_iter};
+            ++words_iter; // skip over name value
             ++words_iter; // skips over "value" token
             std::string_view value{*words_iter};
             handleSetOption(option_name, value);
@@ -76,6 +77,8 @@ private:
             new_game_ = true;
         } else if (command_token == "ponderhit") {
             handlePonderHit();
+        } else if (command_token == "bench") {
+            handleBench();
         } else if (command_token == "quit") {
             exit(0);
         } else {
@@ -85,13 +88,28 @@ private:
 
     static inline void handleIsready() { send("readyok"); }
 
-    inline void handleStop() {
-        search_manager_.stopSearch();
+    inline void handleStop() { search_manager_.stopSearch(); }
+
+    constexpr void handleSetOption(std::string_view name, std::string_view value) {
+        if (name == "Hash") {
+            int hash_size = HASH.default_value;
+            std::from_chars(value.data(), value.data() + value.size(), hash_size);
+            search_manager_.setHashMBSize(hash_size);
+        }
+        if (name == "threads" || name == "Threads") {
+            int cores_count = THREADS.default_value;
+            std::from_chars(value.data(), value.data() + value.size(), cores_count);
+            search_manager_.setMaxCores(cores_count);
+            std::string message = "info string Using " + std::to_string(cores_count) + " threads";
+            send(message);
+        }
     }
 
-    constexpr void handleSetOption(std::string_view name, std::string_view value) {}
-
-    static inline void handleUCI() { send(UCI_ID_STRING); }
+    static inline void handleUCI() {
+        send(UCI_ID_STRING);
+        send(OPTIONS);
+        send("uciok");
+    }
 
     constexpr void handlePosition(auto iter, auto end_iter) {
         // parse further options startpos fen and moves
@@ -163,7 +181,7 @@ private:
                 ++iter;
             } else if (option == "infinite") {
                 params.infinite = true;
-            } else if (option == "searchmoves") { // searchmoves should be last 
+            } else if (option == "searchmoves") { // searchmoves should be last
                 // Collect subsequent search moves until end.
                 while (iter != end_iter) {
                     params.addSearchMove(std::string_view{*iter});
@@ -176,6 +194,21 @@ private:
     }
 
     constexpr void handlePonderHit() {}
+
+    inline void handleBench() {
+        search_manager_.setPosToStartpos();
+        bitcrusher::SearchParameters params{.max_depth = 13};
+        search_manager_.startSearch<FastMoveSink>(params);
+        search_manager_.waitUntilSearchFinished();
+
+        auto     start_time     = std::chrono::steady_clock::now();
+        uint64_t nodes_searched = search_manager_.getNodeCount();
+        auto     end_time       = std::chrono::steady_clock::now();
+        auto     duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
+        // Calculate nodes per second
+        uint64_t nps = nodes_searched / duration.count();
+        send(std::to_string(nodes_searched) + " nodes " + std::to_string(nps) + " nps");
+    }
 };
 
 } // namespace bitcrusher::uci

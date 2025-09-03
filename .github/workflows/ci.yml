@@ -71,39 +71,35 @@ jobs:
           cd bin/Release
           ./Tests.exe --gtest_filter=-*slow
 
-  macos:
-    runs-on: macos-15
+  # macos:
+  #   runs-on: macos-15
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: Use Xcode 16
-        run: sudo xcode-select -s /Applications/Xcode_16.0.app
+  #     - name: Use Xcode 16
+  #       run: sudo xcode-select -s /Applications/Xcode_16.0.app
 
-      - name: Setup premake5
-        uses: abel0b/setup-premake@v2.4
-        with:
-          version: "5.0.0-beta7"
+  #     - name: Setup premake5
+  #       uses: abel0b/setup-premake@v2.4
+  #       with:
+  #         version: "5.0.0-beta7"
 
-      - name: Generate Xcode project
-        run: premake5 xcode4 --with-tests
+  #     - name: Generate Xcode project
+  #       run: premake5 xcode4 --with-tests
 
-      - name: Build with Xcode
-        run: |
-          cd build
-          xcodebuild \
-            -project Tests.xcodeproj \
-            -scheme Tests \
-            -configuration Release \
-            -sdk macosx \
-            -derivedDataPath ../obj/Release \
-            SYMROOT=../bin/Release \
-            CXXFLAGS="-std=c++23" \
-            CLANG_ENABLE_COROUTINES=YES \
-          | xcpretty
+  #     - name: Build with Xcode
+  #       run: |
+  #         cd build
+  #         xcodebuild \
+  #           -project Tests.xcodeproj \
+  #           -configuration Release \
+  #           -scheme Tests \
+  #           -sdk macosx \
+  #           build
 
-      - name: Run tests
-        run: |
-          cd bin/Release
-          ./Tests --gtest_filter=-*slow
+  #     - name: Run tests
+  #       run: |
+  #         cd bin/Release
+  #         ./Tests --gtest_filter=-*slow

@@ -1,8 +1,8 @@
 #ifndef BITCRUSHER_SEARCH_HPP
 #define BITCRUSHER_SEARCH_HPP
 
-#include "bitboard_concepts.hpp"
 #include "board_state.hpp"
+#include "concepts.hpp"
 #include "evaluation.hpp"
 #include "legal_move_generators/legal_moves_generator.hpp"
 #include "move.hpp"
@@ -14,7 +14,6 @@
 #include <cstdint>
 #include <stop_token>
 #include <string>
-#include <string_view>
 #include <vector>
 #include <zobrist_hasher.hpp>
 
@@ -29,8 +28,8 @@ struct SearchParameters {
     int                      white_increment_ms{0};
     int                      black_increment_ms{0};
     int                      moves_to_go{0};  // number of moves till next time control
-    int                      max_depth{0};    // search x plies only.
-    int                      max_nodes{0};    // search x nodes only
+    int                      max_depth{-1};   // search x plies only.
+    int                      max_nodes{-1};   // search x nodes only
     int                      mate_in_x{0};    // search fo a mate in x moves
     int                      move_time_ms{0}; // search x mseconds
     bool                     infinite{false};
@@ -47,19 +46,27 @@ struct SharedSearchContext {
 // Alpha is minimum score that the maximizing player is assured of
 // Beta is maximum score that the minimizing player is assured of
 template <Color Side, MoveSink MoveSinkT>
-int search(SharedSearchContext&   search_ctx,
-           BoardState&            board,
-           int                    depth,
-           int                    alpha,
-           int                    beta,
-           const std::stop_token& st,
-           int                    ply = 0) {
+int search(SharedSearchContext&                  search_ctx,
+           BoardState&                           board,
+           const SearchParameters&               search_parameters,
+           int                                   alpha,
+           int                                   beta,
+           const std::stop_token&                st,
+           std::chrono::steady_clock::time_point start_time,
+           int                                   ply = 0) {
 
     if (st.stop_requested()) {
         return alpha;
     }
+    // auto now         = std::chrono::steady_clock::now();
+    // auto search_time = now - start_time;
+    // if (Side == Color::WHITE && search_time >= search_parameters.white_time_ms) {
+    // }
+    int depth = search_parameters.max_depth - ply;
     ++search_ctx.nodes_searched;
-    if (depth == 0) {
+    if (ply == search_parameters.max_depth ||
+        (search_parameters.max_nodes > 0 &&
+         search_ctx.nodes_searched >= search_parameters.max_nodes)) {
         return basicEval(board, Side);
     }
     // Mate distance pruning
@@ -105,9 +112,9 @@ int search(SharedSearchContext&   search_ctx,
 
     for (int i = 0; i < sink.count; i++) {
         move_processor.applyMove(board, sink.moves[i]);
-        // Note: -basicSearch because the opponent's best score becomes your worst
-        int eval = -search<! Side, MoveSinkT>(search_ctx, board, depth - 1, -beta, -alpha, st,
-                                              ply + 1); 
+        // -search because the opponent's best score becomes your worst
+        int eval = -search<! Side, MoveSinkT>(search_ctx, board, search_parameters, -beta, -alpha,
+                                              st, start_time, ply + 1);
         move_processor.undoMove(board, sink.moves[i]);
 
         if (eval > best_score) {
@@ -117,9 +124,9 @@ int search(SharedSearchContext&   search_ctx,
             alpha = std::max(eval, alpha);
         }
         if (eval >= beta) {
-            best_score = eval;          
+            best_score = eval;
             best_move  = sink.moves[i];
-            break;                      // Beta cutoff
+            break; // Beta cutoff
         }
     }
 
