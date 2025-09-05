@@ -3,6 +3,7 @@
 
 #include "move.hpp"
 #include <climits>
+#include <cstddef>
 #include <mutex>
 #include <vector>
 
@@ -11,8 +12,6 @@ namespace bitcrusher {
 inline constexpr int NOT_FOUND_IN_TRANSPOSITION_TABLE = INT_MIN;
 
 inline constexpr uint32_t BUCKET_COUNT = 1024;
-
-inline constexpr uint32_t MIN_TABLE_SIZE = 1024;
 
 enum class TranspositionTableEvaluationType : std::uint8_t { EXACT_VALUE, AT_BEST, AT_LEAST };
 
@@ -36,9 +35,9 @@ class TranspositionTable {
     [[nodiscard]] uint32_t indexForKey(uint64_t key) const { return key % size_; }
 
 public:
-    TranspositionTable() { setSize(MIN_TABLE_SIZE); }
+    TranspositionTable() = delete;
 
-    explicit TranspositionTable(uint32_t size) { setSize(size); }
+    explicit TranspositionTable(size_t megabyte_size) { setMBSize(megabyte_size); }
 
     void store(int                              depth,
                int                              eval,
@@ -69,12 +68,12 @@ public:
             return entry.value;
         }
         if (entry.evaluation_type == TranspositionTableEvaluationType::AT_BEST &&
-            entry.value <= alpha) {
-            return alpha;
+            entry.value < alpha) {
+            return entry.value;
         }
         if (entry.evaluation_type == TranspositionTableEvaluationType::AT_LEAST &&
             entry.value >= beta) {
-            return beta;
+            return entry.value;
         }
         return NOT_FOUND_IN_TRANSPOSITION_TABLE;
     }
@@ -83,9 +82,19 @@ public:
         return table_[key % size_];
     }
 
+    void setMBSize(size_t size) {
+        constexpr std::size_t BYTES_PER_KILOBYTE     = 1024ULL;
+        constexpr std::size_t KILOBYTES_PER_MEGABYTE = 1024ULL;
+        size_t target_memory_bytes = size * KILOBYTES_PER_MEGABYTE * BYTES_PER_KILOBYTE;
+        size_t object_size         = sizeof(TranspositionTableEntry);
+        size_t num_objects         = target_memory_bytes / object_size;
+        setSize(num_objects);
+    }
+
     void setSize(uint32_t size) {
         size_ = size;
         table_.resize(size);
+        table_.shrink_to_fit();
     }
 };
 

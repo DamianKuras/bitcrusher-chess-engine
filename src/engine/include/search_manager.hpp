@@ -1,3 +1,6 @@
+#ifndef BITCRUSHER_SEARCH_MANAGER_HPP
+#define BITCRUSHER_SEARCH_MANAGER_HPP
+
 #include "bitboard_enums.hpp"
 #include "board_state.hpp"
 #include "concepts.hpp"
@@ -6,6 +9,7 @@
 #include "zobrist_hasher.hpp"
 #include <chrono>
 #include <climits>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <iostream>
@@ -15,14 +19,11 @@
 
 namespace bitcrusher {
 
-constexpr inline int MINIMAL_TT_SIZE = 1024;
-
 class SearchManager {
 
 public:
-    SearchManager() {
+    explicit SearchManager(size_t tt_megabyte_size) : search_ctx_(tt_megabyte_size) {
         ZobristHasher::init(std::time(nullptr));
-        search_ctx_.tt.setSize(MINIMAL_TT_SIZE);
     }
 
     template <MoveSink MoveSinkT> void startSearch(const SearchParameters& search_options) {
@@ -57,7 +58,9 @@ public:
 
     void handleFinish() {
         is_searching_ = false;
-        onSearchFinished_();
+        if (onSearchFinished_) {
+            onSearchFinished_();
+        }
     }
 
     [[nodiscard]] uint64_t getNodeCount() const { return search_ctx_.nodes_searched.load(); };
@@ -109,8 +112,6 @@ public:
         auto     entry          = search_ctx_.tt.getEntry(start_pos_hash);
         return toUci(entry.best_move);
     }
-    
-
 
 private:
     std::vector<std::jthread>                          workers_;
@@ -127,3 +128,5 @@ private:
 };
 
 } // namespace bitcrusher
+
+#endif // BITCRUSHER_SEARCH_MANAGER_HPP

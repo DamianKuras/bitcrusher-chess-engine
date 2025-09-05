@@ -41,6 +41,8 @@ struct SearchParameters {
 struct SharedSearchContext {
     std::atomic<std::uint64_t> nodes_searched{0ULL};
     TranspositionTable         tt;
+
+    explicit SharedSearchContext(size_t tt_megabyte_size) : tt(tt_megabyte_size) {}
 };
 
 // Alpha is minimum score that the maximizing player is assured of

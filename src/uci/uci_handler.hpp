@@ -5,6 +5,7 @@
 #include "move_sink.hpp"
 #include "search_manager.hpp"
 #include "uci_constants.hpp"
+#include <chrono>
 #include <iostream>
 #include <ranges>
 #include <string>
@@ -15,7 +16,7 @@ namespace bitcrusher::uci {
 class UCIHandler {
 
 public:
-    UCIHandler() {
+    UCIHandler() : search_manager_(HASH.default_value) {
         search_manager_.setOnSearchFinished([this]() {
             std::string best_move = search_manager_.bestMoveUci();
             send("bestmove " + best_move);
@@ -32,6 +33,24 @@ public:
             }
             processCommand(line_);
         }
+    }
+
+    static inline void handleBench() {
+        bitcrusher::SearchManager bench_search_manager(HASH.default_value);
+        bench_search_manager.setPosToStartpos();
+        const int                    bench_search_depth = 10;
+        bitcrusher::SearchParameters params{.max_depth = bench_search_depth};
+        auto                         start_time = std::chrono::steady_clock::now();
+        bench_search_manager.startSearch<FastMoveSink>(params);
+        bench_search_manager.waitUntilSearchFinished();
+
+        uint64_t nodes_searched = bench_search_manager.getNodeCount();
+        auto     end_time       = std::chrono::steady_clock::now();
+        auto     duration_miliseconds =
+            std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+        const int milliseconds_per_seconds = 1000;
+        uint64_t  nps = (nodes_searched * milliseconds_per_seconds) / duration_miliseconds.count();
+        send(std::to_string(nodes_searched) + " nodes " + std::to_string(nps) + " nps");
     }
 
 private:
@@ -194,21 +213,6 @@ private:
     }
 
     constexpr void handlePonderHit() {}
-
-    inline void handleBench() {
-        search_manager_.setPosToStartpos();
-        bitcrusher::SearchParameters params{.max_depth = 13};
-        search_manager_.startSearch<FastMoveSink>(params);
-        search_manager_.waitUntilSearchFinished();
-
-        auto     start_time     = std::chrono::steady_clock::now();
-        uint64_t nodes_searched = search_manager_.getNodeCount();
-        auto     end_time       = std::chrono::steady_clock::now();
-        auto     duration = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time);
-        // Calculate nodes per second
-        uint64_t nps = nodes_searched / duration.count();
-        send(std::to_string(nodes_searched) + " nodes " + std::to_string(nps) + " nps");
-    }
 };
 
 } // namespace bitcrusher::uci
