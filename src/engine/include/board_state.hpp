@@ -4,7 +4,9 @@
 #include "bitboard_conversions.hpp"
 #include "bitboard_enums.hpp"
 #include "bitboard_utils.hpp"
+#include "zobrist_hash_keys.hpp"
 #include <array>
+#include <cassert>
 
 namespace bitcrusher {
 
@@ -18,9 +20,12 @@ const std::array<Piece, PIECE_COUNT_PER_SIDE> BLACK_PIECES{
     Piece::BLACK_ROOK, Piece::BLACK_QUEEN,  Piece::BLACK_KING,
 };
 
+enum class OccupancyPolicy : bool { UPDATE, LEAVE };
+enum class HashPolicy : bool { UPDATE, LEAVE };
+
 class BoardState final {
 public:
-    /* Bitboard accessors */
+    // Bitboard accessors.
     [[nodiscard]] constexpr uint64_t getBitboard(Piece piece) const noexcept {
         return bitboards_[piece];
     }
@@ -78,39 +83,83 @@ public:
         if (square_bb & (bitboards_[Piece::BLACK_QUEEN] | bitboards_[Piece::WHITE_QUEEN])) {
             return PieceType::QUEEN;
         }
+        if (square_bb & (bitboards_[Piece::BLACK_KING] | bitboards_[Piece::WHITE_KING])) {
+            return PieceType::KING;
+        }
 
         return PieceType::NONE;
     }
 
-    // Adding, removing and moving pieces
+    void setZobristHash(uint64_t hash) { zobrist_hash_ = hash; }
 
-    // sets piece on square without changing occupancy usefull when you want to
-    // recalculate occupancy once after multiple changes otherwise use add
+    [[nodiscard]] uint64_t getZobristHash() const { return zobrist_hash_; }
 
-    template <Color Side>
-    constexpr void removePieceFromSquare(PieceType piece_t, Square square) noexcept {
-        Piece piece = convert::toPiece<Side>(piece_t);
-        utils::clearSquare(bitboards_[piece], square);
-    }
-
-    template <Color Side>
+    // Adding, removing and moving pieces.
+    
+    template <Color           Side,
+              OccupancyPolicy UpdateOccupancy = OccupancyPolicy::UPDATE,
+              HashPolicy      UpdateHash      = HashPolicy::UPDATE>
     constexpr void addPieceToSquare(PieceType piece_t, Square square) noexcept {
         Piece piece = convert::toPiece<Side>(piece_t);
         utils::setSquare(bitboards_[piece], square);
-        calculateOccupancies();
+        if constexpr (UpdateOccupancy == OccupancyPolicy::UPDATE) {
+            if constexpr (Side == Color::WHITE) {
+                utils::setSquare(white_occupancy_, square);
+            } else { // Side == Color::BLACK
+                utils::setSquare(black_occupancy_, square);
+            }
+            utils::setSquare(all_occupancy_, square);
+            utils::clearSquare(empty_squares_, square);
+        }
+        if constexpr (UpdateHash == HashPolicy::UPDATE) {
+            zobrist_hash_ ^= ZobristKeys::getPieceSquareKey(piece, square);
+        }
     }
 
-    constexpr void addPieceToSquare(Piece piece, Square square) noexcept {
-        utils::setSquare(bitboards_[piece], square);
-        calculateOccupancies();
+    template <Color           Side,
+              OccupancyPolicy UpdateOccupancy = OccupancyPolicy::UPDATE,
+              HashPolicy      UpdateHash      = HashPolicy::UPDATE>
+    constexpr void removePieceFromSquare(PieceType piece_t, Square square) noexcept {
+        Piece piece = convert::toPiece<Side>(piece_t);
+        utils::clearSquare(bitboards_[piece], square);
+        if constexpr (UpdateOccupancy == OccupancyPolicy::UPDATE) {
+            if constexpr (Side == Color::WHITE) {
+                utils::clearSquare(white_occupancy_, square);
+            } else { // Side == Color::BLACK
+                utils::clearSquare(black_occupancy_, square);
+            }
+            utils::clearSquare(all_occupancy_, square);
+            utils::setSquare(empty_squares_, square);
+        }
+        if constexpr (UpdateHash == HashPolicy::UPDATE) {
+            zobrist_hash_ ^= ZobristKeys::getPieceSquareKey(piece, square);
+        }
     }
 
-    template <Color SideToMove>
+    template <Color           Side,
+              OccupancyPolicy UpdateOccupancy = OccupancyPolicy::UPDATE,
+              HashPolicy      UpdateHash      = HashPolicy::UPDATE>
     constexpr void movePiece(PieceType piece_t, Square source, Square destination) noexcept {
-        Piece    piece = convert::toPiece<SideToMove>(piece_t);
-        uint64_t source_and_destination_bitboard =
-            (convert::toBitboard(source) | convert::toBitboard(destination));
+        Piece    piece                = convert::toPiece<Side>(piece_t);
+        uint64_t source_bitboard      = convert::toBitboard(source);
+        uint64_t destination_bitboard = convert::toBitboard(destination);
+        assert((bitboards_[piece] & source_bitboard) &&
+               (bitboards_[piece] & destination_bitboard) == 0);
+        uint64_t source_and_destination_bitboard = (source_bitboard | destination_bitboard);
         bitboards_[piece] ^= source_and_destination_bitboard;
+        if constexpr (UpdateOccupancy == OccupancyPolicy::UPDATE) {
+            if constexpr (Side == Color::WHITE) {
+                white_occupancy_ ^= source_and_destination_bitboard;
+            } else { // Side == Color::BLACK
+                black_occupancy_ ^= source_and_destination_bitboard;
+            }
+            all_occupancy_ ^= source_and_destination_bitboard;
+            empty_squares_ ^= source_and_destination_bitboard;
+        }
+        if constexpr (UpdateHash == HashPolicy::UPDATE) {
+            zobrist_hash_ ^= ZobristKeys::getPieceSquareKey(piece, source);
+            zobrist_hash_ ^= ZobristKeys::getPieceSquareKey(piece, destination);
+        }
     }
 
     // Side to move
@@ -118,65 +167,96 @@ public:
         return side_to_move_ == Color::WHITE;
     }
 
-    constexpr void setSideToMove(Color value) noexcept { side_to_move_ = value; }
+    template <HashPolicy UpdateHash = HashPolicy::UPDATE>
+    constexpr void setSideToMove(Color value) noexcept {
+        if constexpr (UpdateHash == HashPolicy::UPDATE) {
+            if (side_to_move_ != value) {
+                zobrist_hash_ ^= ZobristKeys::getIsBlackMoveKey();
+            }
+        }
+        side_to_move_ = value;
+    }
 
-    void toggleSideToMove() noexcept { side_to_move_ = ! side_to_move_; }
+    template <HashPolicy UpdateHash = HashPolicy::UPDATE> void toggleSideToMove() noexcept {
+        side_to_move_ = ! side_to_move_;
+        if constexpr (UpdateHash == HashPolicy::UPDATE) {
+            zobrist_hash_ ^= ZobristKeys::getIsBlackMoveKey();
+        }
+    }
 
     // Castling rights
-    constexpr void removeWhiteCastlingRights() noexcept {
-        castling_rights_ &= ~(CastlingRights::WHITE_KINGSIDE | CastlingRights::WHITE_QUEENSIDE);
+    template <CastlingRights Rights, HashPolicy UpdateHash = HashPolicy::UPDATE>
+    constexpr void addCastlingRights() noexcept {
+        assert(! hasCastlingRights<Rights>());
+        castling_rights_ |= Rights;
+        if constexpr (UpdateHash == HashPolicy::UPDATE) {
+            if constexpr (SingularCastlingRight<Rights>) {
+                zobrist_hash_ ^= ZobristKeys::getCastlingRightsKey<Rights>();
+            } else {
+                if constexpr (Rights == CastlingRights::WHITE_CASTLING_RIGHTS) {
+                    zobrist_hash_ ^=
+                        ZobristKeys::getCastlingRightsKey<CastlingRights::WHITE_KINGSIDE>();
+                    zobrist_hash_ ^=
+                        ZobristKeys::getCastlingRightsKey<CastlingRights::WHITE_QUEENSIDE>();
+                } else if constexpr (Rights == CastlingRights::BLACK_CASTLING_RIGHTS) {
+                    zobrist_hash_ ^=
+                        ZobristKeys::getCastlingRightsKey<CastlingRights::BLACK_KINGSIDE>();
+                    zobrist_hash_ ^=
+                        ZobristKeys::getCastlingRightsKey<CastlingRights::BLACK_QUEENSIDE>();
+                }
+            }
+        }
     }
 
-    constexpr void removeWhiteKingsideCastlingRight() noexcept {
-        castling_rights_ &= ~(CastlingRights::WHITE_KINGSIDE);
+    template <CastlingRights Rights, HashPolicy UpdateHash = HashPolicy::UPDATE>
+    constexpr void removeCastlingRights() noexcept {
+        CastlingRights prev_castling_rights = castling_rights_;
+        castling_rights_ &= ~Rights;
+        if constexpr (UpdateHash == HashPolicy::UPDATE) {
+            if constexpr ((Rights & CastlingRights::WHITE_KINGSIDE) != CastlingRights::NONE) {
+                if ((prev_castling_rights & CastlingRights::WHITE_KINGSIDE) !=
+                    CastlingRights::NONE) {
+                    zobrist_hash_ ^=
+                        ZobristKeys::getCastlingRightsKey<CastlingRights::WHITE_KINGSIDE>();
+                }
+            }
+            if constexpr ((Rights & CastlingRights::WHITE_QUEENSIDE) != CastlingRights::NONE) {
+                if ((prev_castling_rights & CastlingRights::WHITE_QUEENSIDE) !=
+                    CastlingRights::NONE) {
+                    zobrist_hash_ ^=
+                        ZobristKeys::getCastlingRightsKey<CastlingRights::WHITE_QUEENSIDE>();
+                }
+            }
+            if constexpr ((Rights & CastlingRights::BLACK_KINGSIDE) != CastlingRights::NONE) {
+                if ((prev_castling_rights & CastlingRights::BLACK_KINGSIDE) !=
+                    CastlingRights::NONE) {
+                    zobrist_hash_ ^=
+                        ZobristKeys::getCastlingRightsKey<CastlingRights::BLACK_KINGSIDE>();
+                }
+            }
+            if constexpr ((Rights & CastlingRights::BLACK_QUEENSIDE) != CastlingRights::NONE) {
+                if ((prev_castling_rights & CastlingRights::BLACK_QUEENSIDE) !=
+                    CastlingRights::NONE) {
+                    zobrist_hash_ ^=
+                        ZobristKeys::getCastlingRightsKey<CastlingRights::BLACK_QUEENSIDE>();
+                }
+            }
+        }
     }
 
-    constexpr void removeWhiteQueensideCastlingRight() noexcept {
-        castling_rights_ &= ~(CastlingRights::WHITE_QUEENSIDE);
+    [[nodiscard]] constexpr bool hasAnyCastlingRights() const {
+        return castling_rights_ != CastlingRights::NONE;
     }
 
-    constexpr void addWhiteQueensideCastlingRight() noexcept {
-        castling_rights_ |= CastlingRights::WHITE_QUEENSIDE;
-    }
-
-    constexpr void addWhiteKingsideCastlingRight() noexcept {
-        castling_rights_ |= CastlingRights::WHITE_KINGSIDE;
-    }
-
-    [[nodiscard]] constexpr bool hasWhiteQueensideCastlingRight() const noexcept {
-        return static_cast<bool>(castling_rights_ & CastlingRights::WHITE_QUEENSIDE);
-    }
-
-    [[nodiscard]] constexpr bool hasWhiteKingsideCastlingRight() const noexcept {
-        return static_cast<bool>(castling_rights_ & CastlingRights::WHITE_KINGSIDE);
-    }
-
-    constexpr void removeBlackCastlingRights() noexcept {
-        castling_rights_ &= ~(CastlingRights::BLACK_KINGSIDE | CastlingRights::BLACK_QUEENSIDE);
-    }
-
-    constexpr void removeBlackKingsideCastlingRight() noexcept {
-        castling_rights_ &= ~CastlingRights::BLACK_KINGSIDE;
-    }
-
-    constexpr void removeBlackQueensideCastlingRight() noexcept {
-        castling_rights_ &= ~CastlingRights::BLACK_QUEENSIDE;
-    }
-
-    constexpr void addBlackQueensideCastlingRight() noexcept {
-        castling_rights_ |= CastlingRights::BLACK_QUEENSIDE;
-    }
-
-    constexpr void addBlackKingsideCastlingRight() noexcept {
-        castling_rights_ |= CastlingRights::BLACK_KINGSIDE;
-    }
-
-    [[nodiscard]] constexpr bool hasBlackQueensideCastlingRight() const noexcept {
-        return static_cast<bool>(castling_rights_ & CastlingRights::BLACK_QUEENSIDE);
-    }
-
-    [[nodiscard]] constexpr bool hasBlackKingsideCastlingRight() const noexcept {
-        return static_cast<bool>(castling_rights_ & CastlingRights::BLACK_KINGSIDE);
+    template <CastlingRights Rights>
+    [[nodiscard]] constexpr bool hasCastlingRights() const noexcept {
+        if constexpr (SingularCastlingRight<Rights>) {
+            // For singular rights: check if present
+            return static_cast<bool>(castling_rights_ & Rights);
+        } else {
+            // For composite rights: check if ALL are present
+            return (castling_rights_ & Rights) == Rights;
+        }
     }
 
     // Counters
@@ -199,7 +279,16 @@ public:
     [[nodiscard]] constexpr uint16_t getFullmoveNumber() const noexcept { return fullmove_number_; }
 
     // En passant management
-    constexpr void setEnPassantSquare(Square square) noexcept { en_passant_square_ = square; }
+    template <HashPolicy UpdateHash = HashPolicy::UPDATE>
+    constexpr void setEnPassantSquare(Square square) noexcept {
+        if constexpr (UpdateHash == HashPolicy::UPDATE) { // Remove old en passant square from hash.
+            zobrist_hash_ ^= ZobristKeys::getEnPassantKey(en_passant_square_);
+        }
+        en_passant_square_ = square;
+        if constexpr (UpdateHash == HashPolicy::UPDATE) { // Add new en passant square to hash.
+            zobrist_hash_ ^= ZobristKeys::getEnPassantKey(square);
+        }
+    }
 
     [[nodiscard]] constexpr Square getEnPassantSquare() const noexcept {
         return en_passant_square_;
@@ -222,17 +311,16 @@ public:
 
     constexpr void reset() noexcept {
         bitboards_.fill(0ULL);
-        castling_rights_        = CastlingRights::NONE;
-        en_passant_square_      = Square::NULL_SQUARE;
-        fullmove_number_        = 1;
-        halfmove_clock_         = 0;
-        side_to_move_           = Color::WHITE;
-        white_attacked_squares_ = EMPTY_BITBOARD;
-        black_attacked_squares_ = EMPTY_BITBOARD;
+        castling_rights_   = CastlingRights::NONE;
+        en_passant_square_ = Square::NULL_SQUARE;
+        fullmove_number_   = 1;
+        halfmove_clock_    = 0;
+        side_to_move_      = Color::WHITE;
         calculateOccupancies();
     }
 
-    template <Color Side> [[nodiscard]] const uint64_t& getOwnOccupancy() const {
+    template <Color Side> [[nodiscard]] uint64_t getOwnOccupancy() const {
+
         if constexpr (Side == Color::WHITE) {
             return white_occupancy_;
         } else { // Side==Color::BLACK
@@ -240,7 +328,7 @@ public:
         }
     }
 
-    template <Color Side> [[nodiscard]] const uint64_t& getOpponentOccupancy() const {
+    template <Color Side> [[nodiscard]] uint64_t getOpponentOccupancy() const {
         if constexpr (Side == Color::WHITE) {
             return black_occupancy_;
         } else { // Side==Color::BLACK
@@ -264,14 +352,6 @@ public:
         return (squares_bitboard & enemy_attacked_squares) == EMPTY_BITBOARD;
     }
 
-    template <Color Side> void updateOpponentAttackedSquares(uint64_t attacks) {
-        if constexpr (Side == Color::WHITE) {
-            black_attacked_squares_ = attacks;
-        } else {
-            white_attacked_squares_ = attacks;
-        }
-    }
-
     void setCastlingRights(CastlingRights rights) { castling_rights_ = rights; }
 
     [[nodiscard]] CastlingRights getCastlingRights() const { return castling_rights_; }
@@ -287,17 +367,20 @@ public:
 
 private:
     EnumIndexedArray<std::uint64_t, Piece, static_cast<std::size_t>(Piece::COUNT)> bitboards_;
-    uint64_t       white_attacked_squares_{};
-    uint64_t       black_attacked_squares_{};
     uint16_t       fullmove_number_{1};
     uint8_t        halfmove_clock_{0};
     Square         en_passant_square_{Square::NULL_SQUARE};
     CastlingRights castling_rights_ = CastlingRights::NONE;
     Color          side_to_move_{Color::WHITE};
-    uint64_t       white_occupancy_{};
-    uint64_t       black_occupancy_{};
-    uint64_t       all_occupancy_{};
-    uint64_t       empty_squares_{};
+
+    // Occupancies
+    uint64_t white_occupancy_{0};
+    uint64_t black_occupancy_{0};
+    uint64_t all_occupancy_{0};
+    uint64_t empty_squares_{FULL_BITBOARD};
+
+    uint64_t zobrist_hash_{0};
+    // ZobristHasher haserh;
 };
 
 } // namespace bitcrusher

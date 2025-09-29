@@ -44,14 +44,14 @@ void generateLegalKingMoves(const BoardState&        board,
 
     if (restriction_context.check_count == 0) {
         if constexpr (Side == Color::WHITE) {
-            if (board.hasWhiteKingsideCastlingRight() &&
+            if (board.hasCastlingRights<CastlingRights::WHITE_KINGSIDE>() &&
                 board.isEmpty(squares_between_white_kingside_castle_not_occupied_or_attacked) &&
                 ! (squares_between_white_kingside_castle_not_occupied_or_attacked &
                    enemy_attacked_squares)) {
                 sink(Move::createCastlingMove<Color::WHITE, Side::KINGSIDE>());
             }
 
-            if (board.hasWhiteQueensideCastlingRight() &&
+            if (board.hasCastlingRights<CastlingRights::WHITE_QUEENSIDE>() &&
                 board.isEmpty(squares_between_white_queenside_castle_not_occupied) &&
                 board.isNotAttackedByOpponent<Side>(
                     squares_between_white_queenside_castle_not_attacked, enemy_attacked_squares)) {
@@ -60,14 +60,14 @@ void generateLegalKingMoves(const BoardState&        board,
             }
         } else // Side == Color::Black
         {
-            if (board.hasBlackKingsideCastlingRight() &&
+            if (board.hasCastlingRights<CastlingRights::BLACK_KINGSIDE>() &&
                 board.isEmpty(squares_between_black_kingside_castle_not_occupied_or_attacked) &&
                 board.isNotAttackedByOpponent<Side>(
                     squares_between_black_kingside_castle_not_occupied_or_attacked,
                     enemy_attacked_squares)) {
                 sink(Move::createCastlingMove<Side, Side::KINGSIDE>());
             }
-            if (board.hasBlackQueensideCastlingRight() &&
+            if (board.hasCastlingRights<CastlingRights::BLACK_QUEENSIDE>() &&
                 board.isEmpty(squares_between_black_queenside_castle_not_occupied) &&
                 board.isNotAttackedByOpponent<Side>(
                     squares_between_black_queenside_castle_not_attacked, enemy_attacked_squares)) {

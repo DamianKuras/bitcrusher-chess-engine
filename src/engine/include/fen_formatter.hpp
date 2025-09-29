@@ -22,20 +22,22 @@ const uint8_t DECIMAL_BASE = 10;
 
 const int CHAR_TO_PIECE_TABLE_SIZE = 115;
 
-consteval std::array<Piece, CHAR_TO_PIECE_TABLE_SIZE> createChatToPieceLookup() {
-    std::array<Piece, CHAR_TO_PIECE_TABLE_SIZE> table{};
-    table['P'] = Piece::WHITE_PAWN;
-    table['N'] = Piece::WHITE_KNIGHT;
-    table['B'] = Piece::WHITE_BISHOP;
-    table['R'] = Piece::WHITE_ROOK;
-    table['Q'] = Piece::WHITE_QUEEN;
-    table['K'] = Piece::WHITE_KING;
-    table['p'] = Piece::BLACK_PAWN;
-    table['n'] = Piece::BLACK_KNIGHT;
-    table['b'] = Piece::BLACK_BISHOP;
-    table['r'] = Piece::BLACK_ROOK;
-    table['q'] = Piece::BLACK_QUEEN;
-    table['k'] = Piece::BLACK_KING;
+consteval std::array<std::pair<PieceType, Color>, CHAR_TO_PIECE_TABLE_SIZE>
+createChatToPieceLookup() {
+    std::array<std::pair<PieceType, Color>, CHAR_TO_PIECE_TABLE_SIZE> table{};
+    table['P'] = std::make_pair(PieceType::PAWN, Color::WHITE);
+    table['N'] = std::make_pair(PieceType::KNIGHT, Color::WHITE);
+    table['B'] = std::make_pair(PieceType::BISHOP, Color::WHITE);
+    table['R'] = std::make_pair(PieceType::ROOK, Color::WHITE);
+    table['Q'] = std::make_pair(PieceType::QUEEN, Color::WHITE);
+    table['K'] = std::make_pair(PieceType::KING, Color::WHITE);
+
+    table['p'] = std::make_pair(PieceType::PAWN, Color::BLACK);
+    table['n'] = std::make_pair(PieceType::KNIGHT, Color::BLACK);
+    table['b'] = std::make_pair(PieceType::BISHOP, Color::BLACK);
+    table['r'] = std::make_pair(PieceType::ROOK, Color::BLACK);
+    table['q'] = std::make_pair(PieceType::QUEEN, Color::BLACK);
+    table['k'] = std::make_pair(PieceType::KING, Color::BLACK);
     return table;
 }
 
@@ -73,14 +75,15 @@ constexpr Piece getOurPiece(const BoardState& board, Square square) {
     std::unreachable();
 }
 
-constexpr std::array<Piece, CHAR_TO_PIECE_TABLE_SIZE> CHAR_TO_PIECE = createChatToPieceLookup();
+constexpr std::array<std::pair<PieceType, Color>, CHAR_TO_PIECE_TABLE_SIZE> CHAR_TO_PIECE =
+    createChatToPieceLookup();
 
 } // namespace internal
 
 // Parses the FEN string into BoardState
 // Assumes the FEN input is correct and contains at
 // least board, side to move, en passant square and side to move
-static constexpr void parseFEN(std::string_view fen, BoardState& board) {
+constexpr inline void parseFEN(std::string_view fen, BoardState& board) {
     board.reset();
     auto   iterator = fen.begin();
     Square square   = Square::A8; // Starting square for FEN board description
@@ -92,7 +95,13 @@ static constexpr void parseFEN(std::string_view fen, BoardState& board) {
             // Advance the square by the the number of empty squares
             square += convert::toDigit(fen_character);
         } else if (fen_character != '/') {
-            board.addPieceToSquare(internal::CHAR_TO_PIECE[fen_character], square);
+            auto piece = internal::CHAR_TO_PIECE[fen_character];
+            if (piece.second == Color::WHITE) {
+                board.addPieceToSquare<Color::WHITE, OccupancyPolicy::LEAVE>(piece.first, square);
+            } else { // piece.second == Color::BLACK
+                board.addPieceToSquare<Color::BLACK, OccupancyPolicy::LEAVE>(piece.first, square);
+            }
+
             square += 1;
         }
         ++iterator;
@@ -107,13 +116,13 @@ static constexpr void parseFEN(std::string_view fen, BoardState& board) {
     iterator += 2; // Skip side to move and space
     while (*iterator != ' ') {
         if (*iterator == 'K') {
-            board.addWhiteKingsideCastlingRight();
+            board.addCastlingRights<CastlingRights::WHITE_KINGSIDE>();
         } else if (*iterator == 'Q') {
-            board.addWhiteQueensideCastlingRight();
+            board.addCastlingRights<CastlingRights::WHITE_QUEENSIDE>();
         } else if (*iterator == 'k') {
-            board.addBlackKingsideCastlingRight();
+            board.addCastlingRights<CastlingRights::BLACK_KINGSIDE>();
         } else if (*iterator == 'q') {
-            board.addBlackQueensideCastlingRight();
+            board.addCastlingRights<CastlingRights::BLACK_QUEENSIDE>();
         }
         ++iterator;
     }
@@ -160,6 +169,7 @@ static inline Move moveFromUci(std::string_view uci_string, const BoardState& bo
     const bool is_non_ep_capture = utils::isSquareSet(enemy_occupancy, to);
     const bool is_promotion      = uci_string.size() == 5;
     const bool is_en_passant     = board.getEnPassantSquare() == to;
+    PieceType  moved_piece       = board.getPieceTypeOnSquare(from);
     if (is_promotion) {
         PieceType pawn_promoted_to = convert::toPromotionPieceType(uci_string[4]);
         if (is_non_ep_capture) {
@@ -176,19 +186,28 @@ static inline Move moveFromUci(std::string_view uci_string, const BoardState& bo
     if (is_en_passant) {
         return Move::createEnPassantMove(from, to);
     }
-    if (from == Square::E1 && to == Square::G1 && board.hasWhiteKingsideCastlingRight()) {
+    if (from == Square::E1 && to == Square::G1 &&
+        board.hasCastlingRights<CastlingRights::WHITE_KINGSIDE>() &&
+        moved_piece == PieceType::KING) {
         return Move::createCastlingMove<Color::WHITE, Side::KINGSIDE>();
     }
-    if (from == Square::E1 && to == Square::C1 && board.hasWhiteQueensideCastlingRight()) {
+    if (from == Square::E1 && to == Square::C1 &&
+        board.hasCastlingRights<CastlingRights::WHITE_QUEENSIDE>() &&
+        moved_piece == PieceType::KING) {
         return Move::createCastlingMove<Color::WHITE, Side::QUEENSIDE>();
     }
-    if (from == Square::E8 && to == Square::G8 && board.hasBlackKingsideCastlingRight()) {
-        return Move::createCastlingMove<Color::WHITE, Side::KINGSIDE>();
+    if (from == Square::E8 && to == Square::G8 &&
+        board.hasCastlingRights<CastlingRights::BLACK_KINGSIDE>() &&
+        moved_piece == PieceType::KING) {
+        return Move::createCastlingMove<Color::BLACK, Side::KINGSIDE>();
     }
-    if (from == Square::E8 && to == Square::C8 && board.hasBlackQueensideCastlingRight()) {
-        return Move::createCastlingMove<Color::WHITE, Side::QUEENSIDE>();
+    if (from == Square::E8 && to == Square::C8 &&
+        board.hasCastlingRights<CastlingRights::BLACK_QUEENSIDE>() &&
+        moved_piece == PieceType::KING) {
+        return Move::createCastlingMove<Color::BLACK, Side::QUEENSIDE>();
     }
-    if (from + offset::calculateOffset<Direction::TOP, Direction::TOP>() == to) {
+    if (from + offset::calculateOffset<Direction::TOP, Direction::TOP>() == to &&
+        moved_piece == PieceType::PAWN) {
         return Move::createDoublePawnPushMove(from, to);
     }
     return Move::createQuietMove(from, to, board.getPieceTypeOnSquare(from));

@@ -1,76 +1,52 @@
 #ifndef BITCRUSHER_ZOBRIST_HASHER_HPP
 #define BITCRUSHER_ZOBRIST_HASHER_HPP
 
-#include "bitboard_conversions.hpp"
 #include "bitboard_enums.hpp"
 #include "board_state.hpp"
-#include "random"
-#include <cassert>
+#include "zobrist_hash_keys.hpp"
 
 namespace bitcrusher {
 
 class ZobristHasher {
-    inline static std::array<std::array<uint64_t, PIECE_COUNT>, SQUARE_COUNT> zobrist_piece_table;
-    inline static uint64_t                                                    is_black_move_zobrist;
-    inline static std::array<uint64_t, CASTLING_RIGHTS_COUNT> zobrist_castling_rights;
-    inline static std::array<uint64_t, BOARD_DIMENSION>       zobrist_en_passant_file;
-
 public:
-    static void init(uint64_t seed) {
-        std::mt19937_64 rng(seed);
-        for (int i = 0; i < SQUARE_COUNT; i++) {
-            for (int j = 0; j < PIECE_COUNT; j++) {
-                zobrist_piece_table[i][j] = rng();
-            }
-        }
-        is_black_move_zobrist = rng();
-        for (auto& key : zobrist_castling_rights) {
-            key = rng();
-        }
-        for (auto& key : zobrist_en_passant_file) {
-            key = rng();
-        }
-    }
-
     // Compute 64-bit Zobrist hash for a given board position
     [[nodiscard]] static uint64_t createHash(const BoardState& board) {
         uint64_t hash = 0;
+        // Pieces.
         for (int sq = 0; sq < SQUARE_COUNT; sq++) {
             Piece piece = board.getPieceOnSquare(Square(sq));
-            if (piece != Piece::NONE) {
-                assert(static_cast<int>(piece) < PIECE_COUNT &&
-                       "ZobristHasher: PIECE_COUNT mismatch");
-
-                hash ^= zobrist_piece_table[sq][static_cast<int>(piece)];
+            if (piece == Piece::NONE) {
+                continue;
             }
+
+            assert(static_cast<int>(piece) < PIECE_COUNT && "ZobristHasher: PIECE_COUNT mismatch");
+
+            hash ^= ZobristKeys::getPieceSquareKey(piece, Square(sq));
         }
-        // side to move
+        // Side to move.
         if (! board.isWhiteMove()) {
-            hash ^= is_black_move_zobrist;
+            hash ^= ZobristKeys::getIsBlackMoveKey();
         }
-        // castling rights
-        if (board.hasWhiteKingsideCastlingRight()) {
-            hash ^= zobrist_castling_rights[0];
+        // Castling rights.
+        if (board.hasCastlingRights<CastlingRights::WHITE_KINGSIDE>()) {
+            hash ^= ZobristKeys::getCastlingRightsKey<CastlingRights::WHITE_KINGSIDE>();
         }
-        if (board.hasWhiteQueensideCastlingRight()) {
-            hash ^= zobrist_castling_rights[1];
+        if (board.hasCastlingRights<CastlingRights::WHITE_QUEENSIDE>()) {
+            hash ^= ZobristKeys::getCastlingRightsKey<CastlingRights::WHITE_QUEENSIDE>();
         }
-        if (board.hasBlackKingsideCastlingRight()) {
-            hash ^= zobrist_castling_rights[2];
+        if (board.hasCastlingRights<CastlingRights::BLACK_KINGSIDE>()) {
+            hash ^= ZobristKeys::getCastlingRightsKey<CastlingRights::BLACK_KINGSIDE>();
         }
-        if (board.hasBlackQueensideCastlingRight()) {
-            hash ^= zobrist_castling_rights[3];
+        if (board.hasCastlingRights<CastlingRights::BLACK_QUEENSIDE>()) {
+            hash ^= ZobristKeys::getCastlingRightsKey<CastlingRights::BLACK_QUEENSIDE>();
         }
-        // en passant file
-        if (board.hasEnPassant()) {
-            int en_passant_file = static_cast<int>(convert::toFile(board.getEnPassantSquare()));
-            assert(en_passant_file >= 0 && en_passant_file < BOARD_DIMENSION &&
-                   "ZobristHasher: BOARD_DIMENSION mismatch");
-            hash ^= zobrist_en_passant_file[en_passant_file];
-        }
+        // En passant file.
+        hash ^= ZobristKeys::getEnPassantKey(board.getEnPassantSquare());
+
         return hash;
     }
 };
+
 } // namespace bitcrusher
 
 #endif // BITCRUSHER_ZOBRIST_HASHER_HPP

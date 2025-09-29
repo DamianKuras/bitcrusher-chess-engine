@@ -22,7 +22,7 @@ inline constexpr std::uint64_t EMPTY_BITBOARD{0};
 
 inline constexpr std::uint64_t FULL_BITBOARD{~EMPTY_BITBOARD};
 
-// Represents chess board squares using 0-based indexing from A8 (0) to H1 (63)
+// Represents chess board squares using 0-based indexing from A8 (0) to H1 (63).
 //
 // Null square is equal to 64 outside of the 0-63 board range.
 // clang-format off
@@ -157,16 +157,23 @@ inline std::ostream& operator<<(std::ostream& os, const SquareChars& sq) {
     return os;
 }
 
-/*
-Each of the castling right has its own bit
-*/
+// Each of the castling right has its own bit.
 enum class CastlingRights : std::uint8_t {
-    NONE            = 0,
-    WHITE_KINGSIDE  = 1 << 0,
-    WHITE_QUEENSIDE = 1 << 1,
-    BLACK_KINGSIDE  = 1 << 2,
-    BLACK_QUEENSIDE = 1 << 3,
+    NONE                  = 0,
+    WHITE_KINGSIDE        = 1 << 0,                                        // 0001
+    WHITE_QUEENSIDE       = 1 << 1,                                        // 0010
+    WHITE_CASTLING_RIGHTS = WHITE_KINGSIDE | WHITE_QUEENSIDE,              // 0011
+    BLACK_KINGSIDE        = 1 << 2,                                        // 0100
+    BLACK_QUEENSIDE       = 1 << 3,                                        // 1000
+    BLACK_CASTLING_RIGHTS = BLACK_KINGSIDE | BLACK_QUEENSIDE,              // 1100
+    ALL_CASTLING_RIGHTS   = WHITE_CASTLING_RIGHTS | BLACK_CASTLING_RIGHTS, // 1111
 };
+
+// Concepts to constrain enum usage
+template <CastlingRights Right>
+concept SingularCastlingRight =
+    Right == CastlingRights::WHITE_KINGSIDE || Right == CastlingRights::WHITE_QUEENSIDE ||
+    Right == CastlingRights::BLACK_KINGSIDE || Right == CastlingRights::BLACK_QUEENSIDE;
 
 constexpr CastlingRights operator|(CastlingRights lhs, CastlingRights rhs) noexcept {
     return static_cast<CastlingRights>(static_cast<std::uint8_t>(lhs) |
