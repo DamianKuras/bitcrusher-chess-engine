@@ -7,6 +7,7 @@
 #include <utility>
 
 using bitcrusher::BoardState;
+using bitcrusher::CastlingRights;
 using bitcrusher::Color;
 using bitcrusher::EMPTY_BITBOARD;
 using bitcrusher::Move;
@@ -54,10 +55,7 @@ TEST(parseFENTest, StartingPosition) {
               bitcrusher::convert::toBitboard(Square::E8));
     // State
     EXPECT_TRUE(board_state.isWhiteMove());
-    EXPECT_TRUE(board_state.hasWhiteKingsideCastlingRight());
-    EXPECT_TRUE(board_state.hasWhiteQueensideCastlingRight());
-    EXPECT_TRUE(board_state.hasBlackKingsideCastlingRight());
-    EXPECT_TRUE(board_state.hasBlackQueensideCastlingRight());
+    EXPECT_TRUE(board_state.hasCastlingRights<CastlingRights::ALL_CASTLING_RIGHTS>());
     EXPECT_EQ(board_state.getEnPassantSquare(), Square::NULL_SQUARE);
     EXPECT_EQ(board_state.getHalfmoveClock(), 0);
     EXPECT_EQ(board_state.getFullmoveNumber(), 1);
@@ -74,10 +72,7 @@ TEST(parseFENTest, EmptyBoard) {
     }
 
     EXPECT_TRUE(board_state.isWhiteMove());
-    EXPECT_FALSE(board_state.hasWhiteKingsideCastlingRight());
-    EXPECT_FALSE(board_state.hasWhiteQueensideCastlingRight());
-    EXPECT_FALSE(board_state.hasBlackKingsideCastlingRight());
-    EXPECT_FALSE(board_state.hasBlackQueensideCastlingRight());
+    EXPECT_FALSE(board_state.hasAnyCastlingRights());
     EXPECT_EQ(board_state.getEnPassantSquare(), Square::NULL_SQUARE);
     EXPECT_EQ(board_state.getHalfmoveClock(), 0);
     EXPECT_EQ(board_state.getFullmoveNumber(), 1);
@@ -143,7 +138,7 @@ TEST(parseFENTest, MixedPosition) {
 TEST(MoveFromUci, QuietMove) {
     BoardState board;
     board.setSideToMove(Color::WHITE);
-    board.addPieceToSquare(Piece::WHITE_PAWN, Square::E2);
+    board.addPieceToSquare<Color::WHITE>(PieceType::PAWN, Square::E2);
 
     Move m = moveFromUci("e2e3", board);
 
@@ -155,7 +150,7 @@ TEST(MoveFromUci, QuietMove) {
 TEST(MoveFromUci, DoublePawnPush) {
     BoardState board;
     board.setSideToMove(Color::WHITE);
-    board.addPieceToSquare(Piece::WHITE_PAWN, Square::E2);
+    board.addPieceToSquare<Color::WHITE>(PieceType::PAWN, Square::E2);
 
     Move m = moveFromUci("e2e4", board);
 
@@ -167,8 +162,8 @@ TEST(MoveFromUci, DoublePawnPush) {
 TEST(MoveFromUci, CaptureMove) {
     BoardState board;
     board.setSideToMove(Color::WHITE);
-    board.addPieceToSquare(Piece::WHITE_PAWN, Square::E4);
-    board.addPieceToSquare(Piece::BLACK_PAWN, Square::D5);
+    board.addPieceToSquare<Color::WHITE>(PieceType::PAWN, Square::E4);
+    board.addPieceToSquare<Color::BLACK>(PieceType::PAWN, Square::D5);
 
     Move m = moveFromUci("e4d5", board);
 
@@ -181,8 +176,8 @@ TEST(MoveFromUci, CaptureMove) {
 TEST(MoveFromUci, EnPassant) {
     BoardState board;
     board.setSideToMove(Color::WHITE);
-    board.addPieceToSquare(Piece::WHITE_PAWN, Square::E5);
-    board.addPieceToSquare(Piece::BLACK_PAWN, Square::D5);
+    board.addPieceToSquare<Color::WHITE>(PieceType::PAWN, Square::E5);
+    board.addPieceToSquare<Color::BLACK>(PieceType::PAWN, Square::D5);
     board.setEnPassantSquare(Square::D6);
 
     Move m = moveFromUci("e5d6", board);
@@ -195,7 +190,7 @@ TEST(MoveFromUci, EnPassant) {
 TEST(MoveFromUci, PromotionMove) {
     BoardState board;
     board.setSideToMove(Color::WHITE);
-    board.addPieceToSquare(Piece::WHITE_PAWN, Square::E7);
+    board.addPieceToSquare<Color::WHITE>(PieceType::PAWN, Square::E7);
 
     Move m = moveFromUci("e7e8q", board);
 
@@ -208,8 +203,8 @@ TEST(MoveFromUci, PromotionMove) {
 TEST(MoveFromUci, PromotionCaptureMove) {
     BoardState board;
     board.setSideToMove(Color::WHITE);
-    board.addPieceToSquare(Piece::WHITE_PAWN, Square::E7);
-    board.addPieceToSquare(Piece::BLACK_KNIGHT, Square::D8);
+    board.addPieceToSquare<Color::WHITE>(PieceType::PAWN, Square::E7);
+    board.addPieceToSquare<Color::BLACK>(PieceType::KNIGHT, Square::D8);
 
     Move m = moveFromUci("e7d8n", board);
 
@@ -223,9 +218,9 @@ TEST(MoveFromUci, PromotionCaptureMove) {
 TEST(MoveFromUci, WhiteKingsideCastling) {
     BoardState board;
     board.setSideToMove(Color::WHITE);
-    board.addPieceToSquare(Piece::WHITE_KING, Square::E1);
-    board.addPieceToSquare(Piece::WHITE_ROOK, Square::H1);
-    board.addWhiteKingsideCastlingRight();
+    board.addPieceToSquare<Color::WHITE>(PieceType::KING, Square::E1);
+    board.addPieceToSquare<Color::WHITE>(PieceType::ROOK, Square::H1);
+    board.addCastlingRights<CastlingRights::WHITE_CASTLING_RIGHTS>();
 
     Move m = moveFromUci("e1g1", board);
 
@@ -235,9 +230,9 @@ TEST(MoveFromUci, WhiteKingsideCastling) {
 TEST(MoveFromUci, WhiteQueensideCastling) {
     BoardState board;
     board.setSideToMove(Color::WHITE);
-    board.addPieceToSquare(Piece::WHITE_KING, Square::E1);
-    board.addPieceToSquare(Piece::WHITE_ROOK, Square::A1);
-    board.addWhiteQueensideCastlingRight();
+    board.addPieceToSquare<Color::WHITE>(PieceType::KING, Square::E1);
+    board.addPieceToSquare<Color::WHITE>(PieceType::ROOK, Square::A1);
+    board.addCastlingRights<CastlingRights::WHITE_QUEENSIDE>();
 
     Move m = moveFromUci("e1c1", board);
 
@@ -247,9 +242,9 @@ TEST(MoveFromUci, WhiteQueensideCastling) {
 TEST(MoveFromUci, BlackKingsideCastling) {
     BoardState board;
     board.setSideToMove(Color::BLACK);
-    board.addPieceToSquare(Piece::BLACK_KING, Square::E8);
-    board.addPieceToSquare(Piece::BLACK_ROOK, Square::H8);
-    board.addBlackKingsideCastlingRight();
+    board.addPieceToSquare<Color::BLACK>(PieceType::KING, Square::E8);
+    board.addPieceToSquare<Color::BLACK>(PieceType::ROOK, Square::H8);
+    board.addCastlingRights<CastlingRights::BLACK_KINGSIDE>();
 
     Move m = moveFromUci("e8g8", board);
 
@@ -259,9 +254,9 @@ TEST(MoveFromUci, BlackKingsideCastling) {
 TEST(MoveFromUci, BlackQueensideCastling) {
     BoardState board;
     board.setSideToMove(Color::BLACK);
-    board.addPieceToSquare(Piece::BLACK_KING, Square::E8);
-    board.addPieceToSquare(Piece::BLACK_ROOK, Square::A8);
-    board.addBlackQueensideCastlingRight();
+    board.addPieceToSquare<Color::BLACK>(PieceType::KING, Square::E8);
+    board.addPieceToSquare<Color::BLACK>(PieceType::ROOK, Square::A8);
+    board.addCastlingRights<CastlingRights::BLACK_QUEENSIDE>();
 
     Move m = moveFromUci("e8c8", board);
 
@@ -271,17 +266,18 @@ TEST(MoveFromUci, BlackQueensideCastling) {
 TEST(MoveFromUci, FallbackQuiet) {
     BoardState board;
     board.setSideToMove(Color::WHITE);
-    board.addPieceToSquare(Piece::WHITE_KNIGHT, Square::B1);
+    board.addPieceToSquare<Color::WHITE>(PieceType::KNIGHT, Square::B1);
 
     Move m = moveFromUci("b1a3", board);
+
     EXPECT_TRUE(m.isQuiet());
 }
 
 TEST(MoveFromUci, BlackCapture) {
     BoardState board;
     board.setSideToMove(Color::BLACK);
-    board.addPieceToSquare(Piece::BLACK_PAWN, Square::D5);
-    board.addPieceToSquare(Piece::WHITE_PAWN, Square::C4);
+    board.addPieceToSquare<Color::BLACK>(PieceType::PAWN, Square::D5);
+    board.addPieceToSquare<Color::WHITE>(PieceType::PAWN, Square::C4);
 
     Move m = moveFromUci("d5c4", board);
 
