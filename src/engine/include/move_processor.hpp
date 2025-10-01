@@ -76,8 +76,7 @@ static constexpr void applyMove(BoardState& board, const Move& move) noexcept {
             move.toSquare() + ((SideToMove == Color::WHITE) ? BOARD_DIMENSION : -BOARD_DIMENSION));
     } else if (move.isCapture()) {
         internal::updateCastlingRightsOnRookCapture<SideToMove>(board, move.toSquare());
-        board.removePieceFromSquare<! SideToMove>(move.capturedPiece(),
-                                                              move.toSquare());
+        board.removePieceFromSquare<! SideToMove>(move.capturedPiece(), move.toSquare());
     }
 
     // Move or promote piece.
@@ -85,8 +84,7 @@ static constexpr void applyMove(BoardState& board, const Move& move) noexcept {
         board.removePieceFromSquare<SideToMove>(PieceType::PAWN, move.fromSquare());
         board.addPieceToSquare<SideToMove>(move.promotionPiece(), move.toSquare());
     } else {
-        board.movePiece<SideToMove>(move.movingPiece(), move.fromSquare(),
-                                                move.toSquare());
+        board.movePiece<SideToMove>(move.movingPiece(), move.fromSquare(), move.toSquare());
     }
 
     // If move was a castling move we need to move rook as well as king.
@@ -109,11 +107,11 @@ static constexpr void applyMove(BoardState& board, const Move& move) noexcept {
 
     // Update en passant square.
     if constexpr (SideToMove == Color::WHITE) {
-        board.setEnPassantSquare(
-            (move.isPawnDoublePush()) ? move.fromSquare() - BOARD_DIMENSION : Square::NULL_SQUARE);
+        board.setEnPassantSquare((move.isPawnDoublePush()) ? move.fromSquare() - BOARD_DIMENSION
+                                                           : Square::NULL_SQUARE);
     } else {
-        board.setEnPassantSquare(
-            (move.isPawnDoublePush()) ? move.fromSquare() + BOARD_DIMENSION : Square::NULL_SQUARE);
+        board.setEnPassantSquare((move.isPawnDoublePush()) ? move.fromSquare() + BOARD_DIMENSION
+                                                           : Square::NULL_SQUARE);
     }
 
     // Update move counters.
@@ -135,14 +133,13 @@ undoMove(BoardState& board, const Move& move, const internal::MoveUndo& undo) no
 
     // Move back or un promote piece.
     if (move.isPromotion()) {
-        board.addPieceToSquare<SideToMove, OccupancyPolicy::UPDATE, HashPolicy::LEAVE>(PieceType::PAWN, move.fromSquare());
+        board.addPieceToSquare<SideToMove, OccupancyPolicy::UPDATE, HashPolicy::LEAVE>(
+            PieceType::PAWN, move.fromSquare());
         board.removePieceFromSquare<SideToMove, OccupancyPolicy::UPDATE, HashPolicy::LEAVE>(
-            move.promotionPiece(),
-                                                             move.toSquare());
+            move.promotionPiece(), move.toSquare());
     } else {
         board.movePiece<SideToMove, OccupancyPolicy::UPDATE, HashPolicy::LEAVE>(
-            move.movingPiece(), move.toSquare(),
-                                                 move.fromSquare());
+            move.movingPiece(), move.toSquare(), move.fromSquare());
     }
 
     // If move was a castling move we need to move rook as well as king.
@@ -187,7 +184,8 @@ undoMove(BoardState& board, const Move& move, const internal::MoveUndo& undo) no
 
 class MoveProcessor {
     std::array<internal::MoveUndo, internal::MAX_DEPTH> undo_history_{};
-    size_t                                              undo_history_pointer_{0};
+    int                                                 undo_history_pointer_{0};
+    bool                                                has_repeated_3_times_{false};
 
 public:
     void applyMove(BoardState& board, const Move& move) {
@@ -204,6 +202,19 @@ public:
 
         board.isWhiteMove() ? internal::applyMove<Color::WHITE>(board, move)
                             : internal::applyMove<Color::BLACK>(board, move);
+
+        uint64_t current_hash = board.getZobristHash();
+
+        int count = 1; // Current position occurred one time.
+        for (int i = (undo_history_pointer_ - 2); i >= 0; i -= 2) {
+            if (current_hash == undo_history_[i].zobrist_hash) {
+                ++count;
+            }
+            if (count == 3) {
+                break;
+            }
+        }
+        has_repeated_3_times_ = (count == 3);
     }
 
     void undoMove(BoardState& board, const Move& move) noexcept {
@@ -217,6 +228,8 @@ public:
     }
 
     void resetHistory() { undo_history_pointer_ = 0; }
+
+    [[nodiscard]] bool hasCurrentPositionRepeated3Times() const { return has_repeated_3_times_; }
 };
 
 } // namespace bitcrusher
