@@ -6,6 +6,7 @@
 #include "move.hpp"
 #include "move_processor.hpp"
 #include "gtest/gtest.h"
+#include <cmath>
 
 using bitcrusher::BoardState;
 using bitcrusher::Color;
@@ -18,23 +19,23 @@ using test_helpers::TestPerftMoveSink;
 namespace {
 
 template <Color SideToMove>
-[[nodiscard]] uint64_t perft(int depth, BoardState& board, TestPerftMoveSink& sink) {
+[[nodiscard]] uint64_t perft(int depth, BoardState& board, TestPerftMoveSink& sink, int ply = 0) {
     uint64_t leave_node_count = 0;
     sink.depth                = depth;
     RestrictionContext restriction_context;
     updateRestrictionContext<SideToMove>(board, restriction_context);
+    sink.count[ply] = 0;
+    sink.ply        = ply;
     generateLegalMoves<SideToMove>(board, restriction_context, sink);
 
-    std::vector<Move> moves = std::move(sink.moves);
-    sink.clearMoves();
-
     if (depth == test_helpers::LEAF_DEPTH) {
-        return static_cast<uint64_t>(moves.size());
+        return static_cast<uint64_t>(sink.count[ply]);
     }
     bitcrusher::MoveProcessor move_processor;
-    for (const auto& move : moves) {
+    for (int i = 0; i < sink.count[ply]; i++) {
+        Move move = sink.moves[ply][i];
         move_processor.applyMove(board, move);
-        leave_node_count += perft<! SideToMove>(depth - 1, board, sink);
+        leave_node_count += perft<! SideToMove>(depth - 1, board, sink, ply + 1);
         move_processor.undoMove(board, move);
     }
 

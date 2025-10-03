@@ -1,6 +1,7 @@
 #ifndef BITCRUSHER_MOVE_GENERATION_FIXTURE_HPP
 #define BITCRUSHER_MOVE_GENERATION_FIXTURE_HPP
 
+#include "bitboard_enums.hpp"
 #include "board_state.hpp"
 #include "concepts.hpp"
 #include "move.hpp"
@@ -11,17 +12,33 @@
 
 namespace test_helpers {
 
+using bitcrusher::Color;
+using bitcrusher::Move;
+using bitcrusher::MoveSink;
+using bitcrusher::MoveSinkBase;
+using bitcrusher::MoveType;
+using bitcrusher::PieceType;
+using bitcrusher::Square;
 using bitcrusher::toUci;
 
-struct TestMoveSink {
+struct TestMoveSink : MoveSinkBase<TestMoveSink> {
     std::unordered_set<std::string> moves;
 
     void clear() { moves.clear(); }
 
-    void operator()(const bitcrusher::Move& m) noexcept { moves.insert(toUci(m)); }
+    template <MoveType  MoveT,
+              PieceType MovedOrPromotedToPiece,
+              Color     SideToMove,
+              PieceType CapturedPiece = PieceType::NONE>
+    void emplace(Square from, Square to) noexcept {
+        Move m;
+        m.setMove<MoveT, MovedOrPromotedToPiece, SideToMove, CapturedPiece>(from, to);
+        moves.insert(toUci(m));
+    }
+
 };
 
-static_assert(bitcrusher::MoveSink<TestMoveSink>);
+static_assert(MoveSink<TestMoveSink>);
 
 using bitcrusher::BoardState;
 using bitcrusher::RestrictionContext;

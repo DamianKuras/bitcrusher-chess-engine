@@ -9,12 +9,21 @@
 
 namespace test_helpers {
 
+using bitcrusher::Color;
 using bitcrusher::Move;
 using bitcrusher::MoveSink;
-const int LEAF_DEPTH = 1;
+using bitcrusher::MoveSinkBase;
+using bitcrusher::MoveType;
+using bitcrusher::PieceType;
+using bitcrusher::Square;
+using bitcrusher::toUci;
+
+const int LEAF_DEPTH      = 1;
+const int MAX_LEGAL_MOVES = 218;
+const int MAX_PLY         = 90;
 
 // Sink to collect and count moves during perft testing.
-struct TestPerftMoveSink {
+struct TestPerftMoveSink : MoveSinkBase<TestPerftMoveSink> {
     uint64_t      captures_count{0};
     uint64_t      en_passant_count{0};
     uint64_t      promotions_count{0};
@@ -22,12 +31,19 @@ struct TestPerftMoveSink {
     // Current depth. In leaf nodes this is used to count specific move types.
     uint64_t depth{0};
 
-    void clearMoves() noexcept { moves.clear(); }
+    std::array<std::array<Move, MAX_LEGAL_MOVES>, MAX_PLY> moves{};
+    std::array<int, MAX_PLY>                               count{};
+    int                                                    ply = 0;
 
-    std::vector<Move> moves;
-
-    void operator()(const bitcrusher::Move& move) noexcept {
-        moves.push_back(move);
+    template <MoveType  MoveT,
+              PieceType MovedOrPromotedToPiece,
+              Color     SideToMove,
+              PieceType CapturedPiece = PieceType::NONE>
+    void emplace(Square from, Square to) noexcept {
+        moves[ply][count[ply]].setMove<MoveT, MovedOrPromotedToPiece, SideToMove, CapturedPiece>(
+            from, to);
+        const Move move = moves[ply][count[ply]];
+        count[ply]++;
 
         if (depth != LEAF_DEPTH) {
             return;
@@ -35,7 +51,7 @@ struct TestPerftMoveSink {
         if (move.isEnPassant()) {
             en_passant_count++;
         }
-        if (move.isCapture() || move.isPromotionCapture() || move.isEnPassant()) {
+        if (move.isCapture()) {
             captures_count++;
         }
         if (move.isPromotion()) {
@@ -46,8 +62,6 @@ struct TestPerftMoveSink {
         }
     }
 };
-
-static_assert(MoveSink<TestPerftMoveSink>);
 
 using bitcrusher::BoardState;
 using ::test_helpers::TestPerftMoveSink;

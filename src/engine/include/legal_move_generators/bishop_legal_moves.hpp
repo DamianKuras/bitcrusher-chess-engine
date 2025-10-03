@@ -2,48 +2,30 @@
 #define BITCRUSHER_BISHOP_LEGAL_MOVES_HPP
 
 #include "attack_generators/diagonal_slider_attacks.hpp"
-#include "bitboard_conversions.hpp"
+#include "bitboard_enums.hpp"
 #include "concepts.hpp"
-#include "move.hpp"
-#include "move_generation_from_bitboard.hpp"
 #include "restriction_context.hpp"
+#include "shared_move_generation.hpp"
+#include <cstdint>
 
 namespace bitcrusher {
 
-template <MoveSink MoveSinkT, Color Side>
+template <Color                Side,
+          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
+          MoveSink             MoveSinkT>
 void generateLegalBishopMoves(const BoardState&        board,
                               const RestrictionContext restriction_context,
                               MoveSinkT&               sink) {
-    // uint64_t bishops_not_pinned = board.getNonRestrictedBitboard<PieceType::BISHOP, Side>();
     uint64_t bishops_not_pinned =
         restriction_context.nonRestricted(board.getBitboard<PieceType::BISHOP, Side>());
+    generateSlidingPieceMoves<PieceType::BISHOP, Side, generateDiagonalAttacks, MoveGenerationP>(bishops_not_pinned, board, sink,
+                                                       restriction_context.checkmask);
+
     uint64_t bishops_pinned_only_diagonally =
         board.getBitboard<PieceType::BISHOP, Side>() & restriction_context.pinmask_diagonal;
-    while (bishops_not_pinned != EMPTY_BITBOARD) {
-        Square   bishop_sq      = utils::popFirstSetSquare(bishops_not_pinned);
-        uint64_t bishop_bb      = convert::toBitboard(bishop_sq);
-        uint64_t bishop_attacks = generateDiagonalAttacks(bishop_bb, board.getAllOccupancy()) &
-                                  restriction_context.checkmask;
-        uint64_t bishop_captures    = bishop_attacks & board.getOpponentOccupancy<Side>();
-        uint64_t bishop_quiet_moves = bishop_attacks & board.getEmptySquares();
-        createMovesFromBitboard<MoveType::CAPTURE, PieceType::BISHOP>(sink, bishop_captures,
-                                                                      bishop_sq, board);
-        createMovesFromBitboard<MoveType::QUIET, PieceType::BISHOP>(sink, bishop_quiet_moves,
-                                                                    bishop_sq, board);
-    }
-    while (bishops_pinned_only_diagonally != EMPTY_BITBOARD) {
-        Square   bishop_sq      = utils::popFirstSetSquare(bishops_pinned_only_diagonally);
-        uint64_t bishop_bb      = convert::toBitboard(bishop_sq);
-        uint64_t bishop_attacks = generateDiagonalAttacks(bishop_bb, board.getAllOccupancy()) &
-                                  restriction_context.checkmask &
-                                  restriction_context.pinmask_diagonal;
-        uint64_t bishop_captures    = bishop_attacks & board.getOpponentOccupancy<Side>();
-        uint64_t bishop_quiet_moves = bishop_attacks & board.getEmptySquares();
-        createMovesFromBitboard<MoveType::CAPTURE, PieceType::BISHOP>(sink, bishop_captures,
-                                                                      bishop_sq, board);
-        createMovesFromBitboard<MoveType::QUIET, PieceType::BISHOP>(sink, bishop_quiet_moves,
-                                                                    bishop_sq, board);
-    }
+    generateSlidingPieceMoves<PieceType::BISHOP, Side, generateDiagonalAttacks, MoveGenerationP>(bishops_pinned_only_diagonally, board, sink,
+                                                       restriction_context.checkmask &
+                                                           restriction_context.pinmask_diagonal);
 }
 
 } // namespace bitcrusher

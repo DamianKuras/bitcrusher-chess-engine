@@ -20,7 +20,7 @@ enum class MoveType : uint8_t {
     NULL_MOVE,
 };
 
-class Move final {
+class Move {
 public:
     [[nodiscard]] constexpr Square fromSquare() const noexcept { return from_square_; }
 
@@ -113,59 +113,33 @@ public:
         return flag_ == MoveType::PROMOTION_CAPTURE;
     }
 
-    template <MoveType MoveT, PieceType MovedOrPromotedToPiece>
-    static constexpr Move createMove(Square from, Square to, const BoardState& board) {
 
-        if constexpr (MoveT == MoveType::CAPTURE) {
-            return createCaptureMove(from, to, MovedOrPromotedToPiece,
-                                     board.getPieceTypeOnSquare(to));
-        }
-
-        if constexpr (MoveT == MoveType::DOUBLE_PAWN_PUSH) {
-            return createDoublePawnPushMove(from, to);
-        }
-        if constexpr (MoveT == MoveType::EN_PASSANT) {
-            return createEnPassantMove(from, to);
-        }
-        if constexpr (MoveT == MoveType::KINGSIDE_CASTLE) {
-            if (board.isWhiteMove()) {
-                return createCastlingMove<Color::WHITE, Side::KINGSIDE>();
-            }
-            return createCastlingMove<Color::BLACK, Side::KINGSIDE>();
-        }
-        if constexpr (MoveT == MoveType::QUEENSIDE_CASTLE) {
-            if (board.isWhiteMove()) {
-                return createCastlingMove<Color::WHITE, Side::QUEENSIDE>();
-            }
-            return createCastlingMove<Color::BLACK, Side::QUEENSIDE>();
-        }
-        if constexpr (MoveT == MoveType::PROMOTION) {
-            return createPromotionMove(from, to, MovedOrPromotedToPiece);
-        }
-
-        if constexpr (MoveT == MoveType::PROMOTION_CAPTURE) {
-            return createPromotionCaptureMove(from, to, MovedOrPromotedToPiece,
-                                              board.getPieceTypeOnSquare(to));
-        }
-
-        if constexpr (MoveT == MoveType::QUIET) {
-            return createQuietMove(from, to, MovedOrPromotedToPiece);
-        }
+    template <MoveType  MoveT,
+              PieceType MovedOrPromotedToPiece,
+              Color     SideToMove,
+              PieceType CapturedPiece = PieceType::NONE>
+    constexpr void setMove(Square from, Square to) {
+        from_square_    = from;
+        to_square_      = to;
+        moving_piece_   = MovedOrPromotedToPiece;
+        flag_           = MoveT;
+        captured_piece_ = CapturedPiece;
     }
 
-    constexpr Move() noexcept                    = default;
+    constexpr Move() noexcept = default;
+
     constexpr bool operator==(const Move&) const = default;
 
     static Move none() {
-        return {Square::A1, Square::A1, PieceType::NONE, MoveType::NULL_MOVE, PieceType::NONE};
+        return {Square::A8, Square::A8, PieceType::NONE, MoveType::NULL_MOVE, PieceType::NONE};
     }
 
 private:
-    Square    from_square_{};
-    Square    to_square_{};
-    PieceType moving_piece_{};
-    MoveType  flag_{};
-    PieceType captured_piece_{};
+    Square    from_square_{Square::A8};
+    Square    to_square_{Square::A8};
+    PieceType moving_piece_{PieceType::NONE};
+    MoveType  flag_{MoveType::NULL_MOVE};
+    PieceType captured_piece_{PieceType::NONE};
 
     Move(Square    from,
          Square    to,

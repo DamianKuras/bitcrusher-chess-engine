@@ -12,19 +12,24 @@
 
 namespace bitcrusher {
 
-template <Color Side, MoveSink MoveSinkT>
+template <Color Side,
+          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
+          MoveSink             MoveSinkT>
 void generateLegalMoves(const BoardState&        board,
                         const RestrictionContext restriction_context,
                         MoveSinkT&               sink) {
-    if (restriction_context.check_count < 2) {
-        generateLegalPawnMoves<MoveSinkT, Side>(board, restriction_context, sink);
-        generateLegalKnightMoves<MoveSinkT, Side>(board, restriction_context, sink);
-        generateLegalBishopMoves<MoveSinkT, Side>(board, restriction_context, sink);
-        generateLegalRookMoves<MoveSinkT, Side>(board, restriction_context, sink);
-        generateLegalQueenMoves<MoveSinkT, Side>(board, restriction_context, sink);
-        generateLegalKingMoves<MoveSinkT, Side>(board, restriction_context, sink);
-    } else { // if in double check only king moves are legal
-        generateLegalKingMoves<MoveSinkT, Side>(board, restriction_context, sink);
+
+    if (restriction_context.check_count < 2) { // In check or no check not all.
+        generateLegalQueenMoves< Side, MoveGenerationP>(board, restriction_context, sink);
+        generateLegalRookMoves< Side, MoveGenerationP>(board, restriction_context, sink);
+        generateLegalBishopMoves< Side, MoveGenerationP>(board, restriction_context,
+                                                                   sink);
+        generateLegalKnightMoves< Side, MoveGenerationP>(board, restriction_context,
+                                                                   sink);
+        generateLegalPawnMoves< Side, MoveGenerationP>(board, restriction_context, sink);
+        generateLegalKingMoves< Side, MoveGenerationP>(board, restriction_context, sink);
+    } else { // In double check only king moves are legal.
+        generateLegalKingMoves<Side, MoveGenerationP>(board, restriction_context, sink);
     }
 }
 

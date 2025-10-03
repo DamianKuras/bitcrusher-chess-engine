@@ -8,20 +8,28 @@
 
 namespace bitcrusher {
 
-// Helper concept to test if a type is either void or std::generator<Move>
-template <typename R>
-concept IsVoidOrGenerator = std::same_as<R, void> || std::same_as<R, std::generator<Move>>;
-
-// Concept for move sink
-// which is satisfied by any type "T" such that it has () overload accepting
-// move
-template <typename T>
-concept MoveSink = requires(T sink, const Move& move) {
-    { sink(move) } -> IsVoidOrGenerator;
+template <typename Derived> struct MoveSinkBase {
+    template <MoveType  MoveT,
+              PieceType MovedOrPromotedToPiece,
+              Color     SideToMove,
+              PieceType CapturedPiece = PieceType::NONE>
+    void emplace(Square from, Square to) noexcept {
+        // Interface enforcement via CRTP
+        static_cast<Derived*>(this)
+            ->template emplace<MoveT, MovedOrPromotedToPiece, SideToMove, CapturedPiece>(from, to);
+    }
 };
+
+template <typename T>
+concept MoveSink = requires { requires std::derived_from<T, MoveSinkBase<T>>; };
 
 template <Direction D>
 concept Horizontal = (D == Direction::LEFT || D == Direction::RIGHT);
+
+template <auto G>
+concept DirectionalAttackGenerator = requires(uint64_t from, uint64_t occ) {
+    { G(from, occ) } -> std::same_as<uint64_t>;
+};
 
 } // namespace bitcrusher
 
