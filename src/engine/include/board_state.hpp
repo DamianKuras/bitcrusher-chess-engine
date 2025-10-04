@@ -162,7 +162,7 @@ public:
         }
     }
 
-    // Side to move
+    // Side to move.
     [[nodiscard]] constexpr bool isWhiteMove() const noexcept {
         return side_to_move_ == Color::WHITE;
     }
@@ -184,7 +184,7 @@ public:
         }
     }
 
-    // Castling rights
+    // Castling rights.
     template <CastlingRights Rights, HashPolicy UpdateHash = HashPolicy::UPDATE>
     constexpr void addCastlingRights() noexcept {
         assert(! hasCastlingRights<Rights>());
@@ -251,15 +251,15 @@ public:
     template <CastlingRights Rights>
     [[nodiscard]] constexpr bool hasCastlingRights() const noexcept {
         if constexpr (SingularCastlingRight<Rights>) {
-            // For singular rights: check if present
+            // For singular rights: check if present.
             return static_cast<bool>(castling_rights_ & Rights);
         } else {
-            // For composite rights: check if ALL are present
+            // For composite rights: check if ALL are present.
             return (castling_rights_ & Rights) == Rights;
         }
     }
 
-    // Counters
+    // Counters.
     constexpr void setHalfmoveClock(uint8_t halfmove_clock) noexcept {
         halfmove_clock_ = halfmove_clock;
     }
@@ -278,7 +278,7 @@ public:
 
     [[nodiscard]] constexpr uint16_t getFullmoveNumber() const noexcept { return fullmove_number_; }
 
-    // En passant management
+    // En passant management.
     template <HashPolicy UpdateHash = HashPolicy::UPDATE>
     constexpr void setEnPassantSquare(Square square) noexcept {
         if constexpr (UpdateHash == HashPolicy::UPDATE) { // Remove old en passant square from hash.
@@ -294,7 +294,7 @@ public:
         return en_passant_square_;
     }
 
-    // Occupancy
+    // Occupancy.
     [[nodiscard]] constexpr uint64_t generateWhiteOccupancy() const noexcept {
         return (bitboards_[Piece::WHITE_PAWN] | bitboards_[Piece::WHITE_KNIGHT] |
                 bitboards_[Piece::WHITE_BISHOP] | bitboards_[Piece::WHITE_ROOK] |
@@ -373,14 +373,13 @@ private:
     CastlingRights castling_rights_ = CastlingRights::NONE;
     Color          side_to_move_{Color::WHITE};
 
-    // Occupancies
+    // Occupancies.
     uint64_t white_occupancy_{0};
     uint64_t black_occupancy_{0};
     uint64_t all_occupancy_{0};
     uint64_t empty_squares_{FULL_BITBOARD};
 
     uint64_t zobrist_hash_{0};
-    // ZobristHasher haserh;
 };
 
 } // namespace bitcrusher

@@ -19,7 +19,7 @@ constexpr int materialCountDifference(const BoardState& board) noexcept {
     return (white_count - black_count);
 }
 
-// returns positive score for white being ahead and negative for black being ahead
+// Returns evaluation relative to side to move.
 [[nodiscard]] constexpr int basicEval(const BoardState& board, Color side) {
     int eval = 0;
     eval += PAWN_CENTIPAWN_VALUE * materialCountDifference<PieceType::PAWN>(board);
@@ -27,7 +27,6 @@ constexpr int materialCountDifference(const BoardState& board) noexcept {
     eval += BISHOP_CENTIPAWN_VALUE * materialCountDifference<PieceType::BISHOP>(board);
     eval += ROOK_CENTIPAWN_VALUE * materialCountDifference<PieceType::ROOK>(board);
     eval += QUEEN_CENTIPAWN_VALUE * materialCountDifference<PieceType::QUEEN>(board);
-
     return side == Color::WHITE ? eval : -eval;
 }
 

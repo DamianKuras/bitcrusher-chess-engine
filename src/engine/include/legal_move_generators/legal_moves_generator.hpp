@@ -12,7 +12,7 @@
 
 namespace bitcrusher {
 
-template <Color Side,
+template <Color                Side,
           MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
           MoveSink             MoveSinkT>
 void generateLegalMoves(const BoardState&        board,
@@ -20,14 +20,12 @@ void generateLegalMoves(const BoardState&        board,
                         MoveSinkT&               sink) {
 
     if (restriction_context.check_count < 2) { // In check or no check not all.
-        generateLegalQueenMoves< Side, MoveGenerationP>(board, restriction_context, sink);
-        generateLegalRookMoves< Side, MoveGenerationP>(board, restriction_context, sink);
-        generateLegalBishopMoves< Side, MoveGenerationP>(board, restriction_context,
-                                                                   sink);
-        generateLegalKnightMoves< Side, MoveGenerationP>(board, restriction_context,
-                                                                   sink);
-        generateLegalPawnMoves< Side, MoveGenerationP>(board, restriction_context, sink);
-        generateLegalKingMoves< Side, MoveGenerationP>(board, restriction_context, sink);
+        generateLegalPawnMoves<Side, MoveGenerationP>(board, restriction_context, sink);
+        generateLegalKnightMoves<Side, MoveGenerationP>(board, restriction_context, sink);
+        generateLegalBishopMoves<Side, MoveGenerationP>(board, restriction_context, sink);
+        generateLegalRookMoves<Side, MoveGenerationP>(board, restriction_context, sink);
+        generateLegalQueenMoves<Side, MoveGenerationP>(board, restriction_context, sink);
+        generateLegalKingMoves<Side, MoveGenerationP>(board, restriction_context, sink);
     } else { // In double check only king moves are legal.
         generateLegalKingMoves<Side, MoveGenerationP>(board, restriction_context, sink);
     }

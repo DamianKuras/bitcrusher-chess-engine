@@ -12,7 +12,7 @@ namespace bitcrusher {
 
 namespace internal {
 
-const int MAX_DEPTH = 300;
+const int MAX_DEPTH = 500;
 
 struct MoveUndo {
     CastlingRights prev_castling_rights{};

@@ -4,12 +4,13 @@
 #include "bitboard_enums.hpp"
 #include "board_state.hpp"
 #include "zobrist_hash_keys.hpp"
+#include <cassert>
 
 namespace bitcrusher {
 
 class ZobristHasher {
 public:
-    // Compute 64-bit Zobrist hash for a given board position
+    // Compute 64-bit Zobrist hash for a given board position.
     [[nodiscard]] static uint64_t createHash(const BoardState& board) {
         uint64_t hash = 0;
         // Pieces.
@@ -18,9 +19,7 @@ public:
             if (piece == Piece::NONE) {
                 continue;
             }
-
-            assert(static_cast<int>(piece) < PIECE_COUNT && "ZobristHasher: PIECE_COUNT mismatch");
-
+            assert(static_cast<int>(piece) < PIECE_COUNT && "ZobristHasher: piece is not valid");
             hash ^= ZobristKeys::getPieceSquareKey(piece, Square(sq));
         }
         // Side to move.
