@@ -12,9 +12,10 @@
 
 namespace bitcrusher {
 
-inline constexpr int NOT_FOUND_IN_TRANSPOSITION_TABLE = -1000000 - 1;
+inline constexpr int NOT_FOUND_IN_TRANSPOSITION_TABLE = 1000000 + 1;
+inline constexpr int ON_EVALUATION                    = 1000000 + 2;
 
-inline constexpr uint32_t BUCKET_COUNT = 4 * 1024;
+inline constexpr uint32_t BUCKET_COUNT = 10 * 1024;
 
 enum class TranspositionTableEvaluationType : std::uint8_t { EXACT_VALUE, LOWERBOUND, UPPERBOUND };
 
@@ -26,6 +27,7 @@ struct TranspositionTableEntry {
     int                              value{NOT_FOUND_IN_TRANSPOSITION_TABLE};
     TranspositionTableEvaluationType evaluation_type{TranspositionTableEvaluationType::EXACT_VALUE};
     Move                             best_move = Move::none();
+    uint8_t                          searching_by{0};
 };
 
 class TranspositionTable {
@@ -47,6 +49,7 @@ public:
 
     void store(uint64_t key, TranspositionTableEntry entry) {
         assert(! entry.best_move.isNullMove());
+        assert(entry.value != ON_EVALUATION);
         uint64_t                    index = indexForKey(key);
         std::lock_guard<std::mutex> lock(getLock(key));
         TranspositionTableEntry&    current_entry = table_[index];
@@ -61,11 +64,25 @@ public:
     }
 
     [[nodiscard]] TranspositionTableEntry getEntry(uint64_t key) {
-        // return {};
         uint64_t                    index = indexForKey(key);
         std::lock_guard<std::mutex> lock(getLock(key));
         TranspositionTableEntry&    entry = table_[index];
         return entry;
+    }
+
+    void addSearched(uint64_t key) {
+        uint64_t index = indexForKey(key);
+        table_[index].searching_by += 1;
+    }
+
+    void removeSearched(uint64_t key) {
+        uint64_t index = indexForKey(key);
+        table_[index].searching_by -= 1;
+    }
+
+    bool isSearched(uint64_t key) {
+        uint64_t index = indexForKey(key);
+        return table_[index].searching_by > 0;
     }
 
     void setMBSize(size_t size) {

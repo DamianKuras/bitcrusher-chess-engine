@@ -18,6 +18,8 @@ template <typename Derived> struct MoveSinkBase {
         static_cast<Derived*>(this)
             ->template emplace<MoveT, MovedOrPromotedToPiece, SideToMove, CapturedPiece>(from, to);
     }
+
+    void setPly(int ply) noexcept { static_cast<Derived*>(this)->setPly(ply); }
 };
 
 template <typename T>

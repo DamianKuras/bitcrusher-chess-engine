@@ -12,12 +12,25 @@
 
 namespace bitcrusher {
 
-template <Color                Side,
-          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
-          MoveSink             MoveSinkT>
-void generateLegalMoves(const BoardState&        board,
-                        const RestrictionContext restriction_context,
-                        MoveSinkT&               sink) {
+enum class RestrictionContextPolicy : bool {
+    UPDATE,
+    LEAVE,
+};
+
+template <Color                    Side,
+          MoveGenerationPolicy     MoveGenerationP     = MoveGenerationPolicy::FULL,
+          RestrictionContextPolicy RestrictionContextP = RestrictionContextPolicy::UPDATE,
+          MoveSink                 MoveSinkT>
+void generateLegalMoves(const BoardState&   board,
+                        MoveSinkT&          sink,
+                        RestrictionContext& restriction_context,
+                        int                 ply = 0) {
+                            
+    if constexpr (RestrictionContextP == RestrictionContextPolicy::UPDATE) {
+        updateRestrictionContext<Side>(board, restriction_context);
+    }
+
+    sink.setPly(ply);
 
     if (restriction_context.check_count < 2) { // In check or no check not all.
         generateLegalPawnMoves<Side, MoveGenerationP>(board, restriction_context, sink);

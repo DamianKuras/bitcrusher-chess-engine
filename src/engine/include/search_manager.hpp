@@ -8,6 +8,7 @@
 #include "move.hpp"
 #include "move_processor.hpp"
 #include "move_sink.hpp"
+#include "restriction_context.hpp"
 #include "search.hpp"
 #include "transposition_table.hpp"
 #include <chrono>
@@ -28,7 +29,7 @@ public:
         ZobristKeys::init(12345);
 
         // Create persistent main worker thread.
-        worker_ = std::thread([this]() { this->workerThreadMain(); });
+        main_search_thread_ = std::thread([this]() { this->workerThreadMain(); });
     }
 
     SearchManager(const SearchManager&)            = delete;
@@ -38,13 +39,17 @@ public:
 
     ~SearchManager() {
         {
-            std::lock_guard<std::mutex> lock(mutex_);
             shutdown_ = true;
-            condition_.notify_one();
+            condition_.notify_all();
         }
 
-        if (worker_.joinable()) {
-            worker_.join();
+        if (main_search_thread_.joinable()) {
+            main_search_thread_.join();
+        }
+        for (auto& thread : workers_) {
+            if (thread.joinable()) {
+                thread.join();
+            }
         }
     }
 
@@ -55,7 +60,6 @@ public:
             waitUntilSearchFinished();
         }
         search_ctx_.tt.clear();
-        best_move_ = Move::none();
         // Update search parameters and state with lock.
         {
             std::lock_guard<std::mutex> lock(mutex_);
@@ -72,8 +76,7 @@ public:
                 search_time_ms_ = calculateMoveTimeAllocation<Color::BLACK>(search_parameters);
             }
         }
-
-        condition_.notify_one(); // Wake search thread.
+        condition_.notify_all(); // Notifies main and all worker threads.
     }
 
     void waitUntilSearchFinished() {
@@ -160,17 +163,14 @@ public:
         return ans;
     }
 
-    std::string getScore() {
-        auto entry = search_ctx_.tt.getEntry(board_.getZobristHash());
-        int  score = entry.value;
-
-        if (std::abs(score) >= CHECKMATE_THRESHOLD) {
-            int mate_distance = CHECKMATE_BASE - std::abs(score);
+    std::string getScore() const {
+        if (std::abs(score_) >= CHECKMATE_THRESHOLD) {
+            int mate_distance = CHECKMATE_BASE - std::abs(score_);
             int moves_to_mate = (mate_distance + 1) / 2;
             return "mate " + std::to_string(moves_to_mate);
         }
 
-        return "cp " + std::to_string(score);
+        return "cp " + std::to_string(score_);
     }
 
     void resetMoveProcessor() { move_processor_.resetHistory(); }
@@ -186,6 +186,16 @@ public:
 
     double getTTUsage() const { return search_ctx_.tt.getUsedPercentage(); }
 #endif
+    void setDebug(bool value) { debug_ = value; }
+
+    void setMaxCores(int cores) {
+        max_cores_ = cores;
+        shutdownWorkers();
+        for (int i = 0; i < max_cores_ - 1; ++i) {
+            workers_.emplace_back([this]() { this->workerThread(); });
+        }
+    }
+
 private:
     void workerThreadMain() {
         while (true) {
@@ -207,13 +217,70 @@ private:
             SharedSearchContext& ctx                   = search_ctx_;
             lock.unlock();
 
-            performSearch<FastMoveSink>(local_options, thread_board, thread_move_processor,
-                                        stop_token, thread_start_time, thread_search_time_ms, ctx);
+            performSearch<FastMoveSink, true>(local_options, thread_board, thread_move_processor,
+                                              stop_token, thread_start_time, thread_search_time_ms,
+                                              ctx);
             handleSearchFinished();
         }
     }
 
-    template <MoveSink MoveSinkT>
+    void workerThread() {
+        while (true) {
+            // Wait for work or shutdown signal.
+            std::unique_lock<std::mutex> lock(mutex_);
+            condition_.wait(lock, [this] {
+                return search_active_.load() || shutdown_.load() || workers_shutdown_.load();
+            });
+
+            if (shutdown_ || workers_shutdown_) {
+                break; // Exit thread.
+            }
+
+            // Copy necessary data for thread-safe access.
+            SearchParameters     local_options         = search_options_;
+            BoardState           thread_board          = board_;
+            auto                 stop_token            = stop_source_.get_token();
+            MoveProcessor        thread_move_processor = move_processor_;
+            auto                 thread_start_time     = start_time_;
+            int                  thread_search_time_ms = search_time_ms_;
+            SharedSearchContext& ctx                   = search_ctx_;
+            lock.unlock();
+
+            performSearch<FastMoveSink>(local_options, thread_board, thread_move_processor,
+                                        stop_token, thread_start_time, thread_search_time_ms, ctx);
+
+            // Wait for main thread to finish searching.
+            {
+                std::unique_lock<std::mutex> lock(mutex_);
+                condition_.wait(lock, [this] {
+                    return ! search_active_.load() || shutdown_.load() || workers_shutdown_.load();
+                });
+                if (shutdown_ || workers_shutdown_) {
+                    break;
+                }
+            }
+        }
+    }
+
+    void shutdownWorkers() {
+        if (workers_.size() == 0) {
+            return;
+        }
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            workers_shutdown_ = true;
+            condition_.notify_all();
+        }
+        for (auto& thread : workers_) {
+            if (thread.joinable()) {
+                thread.join();
+            }
+        }
+        workers_.clear();
+        workers_shutdown_ = false; // Reset for future searches.
+    }
+
+    template <MoveSink MoveSinkT, bool IsMainThread = false>
     void performSearch(const SearchParameters&                            search_parameters,
                        BoardState                                         board,
                        MoveProcessor                                      move_processor,
@@ -221,34 +288,42 @@ private:
                        std::chrono::time_point<std::chrono::steady_clock> start_time,
                        int                                                search_time_ms,
                        SharedSearchContext&                               search_ctx) {
-        FastMoveSink sink;
+        FastMoveSink       sink;
+        RestrictionContext restriction_context;
         for (int depth = 1; depth <= search_parameters.max_depth; depth++) {
+
             int score{0};
             if (board.isWhiteMove()) {
-                score = bitcrusher::search<Color::WHITE, MoveSinkT>(
-                    search_ctx, board, move_processor, search_parameters, depth * 2,
-                    -CHECKMATE_BASE, CHECKMATE_BASE, st, start_time, search_time_ms, sink);
+                score = bitcrusher::search<Color::WHITE>(search_ctx, board, move_processor,
+                                                         search_parameters, restriction_context,
+                                                         depth * 2, -CHECKMATE_BASE, CHECKMATE_BASE,
+                                                         st, start_time, search_time_ms, sink);
             } else {
-                score = bitcrusher::search<Color::BLACK, MoveSinkT>(
-                    search_ctx, board, move_processor, search_parameters, depth * 2,
-                    -CHECKMATE_BASE, CHECKMATE_BASE, st, start_time, search_time_ms, sink);
+                score = bitcrusher::search<Color::BLACK>(search_ctx, board, move_processor,
+                                                         search_parameters, restriction_context,
+                                                         depth * 2, -CHECKMATE_BASE, CHECKMATE_BASE,
+                                                         st, start_time, search_time_ms, sink);
             }
-            if (score != SEARCH_INTERRUPTED) {
-                TranspositionTableEntry root_move_entry =
-                    search_ctx_.tt.getEntry(board.getZobristHash());
-                assert(! root_move_entry.best_move.isNullMove());
-                best_move_ = root_move_entry.best_move;
-                score_     = score;
-                if (onDepthCompleted_) {
-                    onDepthCompleted_(depth);
+            if constexpr (IsMainThread) {
+                if (abs(score) != SEARCH_INTERRUPTED) {
+                    assert(abs(score) != ON_EVALUATION);
+                    TranspositionTableEntry root_move_entry =
+                        search_ctx_.tt.getEntry(board.getZobristHash());
+                    assert(! root_move_entry.best_move.isNullMove());
+                    best_move_ = root_move_entry.best_move;
+                    score_     = score;
+                    if (onDepthCompleted_) {
+                        onDepthCompleted_(depth);
+                    }
+                } else {
+                    break;
                 }
-            } else {
-                break;
             }
         }
     }
 
     void handleSearchFinished() {
+        stop_source_.request_stop();
         if (onSearchFinished_) {
             onSearchFinished_();
         }
@@ -259,9 +334,11 @@ private:
         }
     }
 
-    std::thread       worker_;
-    std::atomic<bool> shutdown_{false};
-    std::atomic<bool> search_active_{false};
+    std::thread              main_search_thread_;
+    std::vector<std::thread> workers_;
+    std::atomic<bool>        shutdown_{false};
+    std::atomic<bool>        workers_shutdown_{false};
+    std::atomic<bool>        search_active_{false};
 
     std::mutex              mutex_;
     std::condition_variable condition_;
@@ -278,8 +355,11 @@ private:
     std::function<void()>    onSearchFinished_;
     std::function<void(int)> onDepthCompleted_;
 
-    Move best_move_ = Move::none();
-    int  score_     = 0;
+    Move best_move_;
+    int  score_{0};
+    bool debug_{false};
+
+    int max_cores_{1};
 };
 
 } // namespace bitcrusher

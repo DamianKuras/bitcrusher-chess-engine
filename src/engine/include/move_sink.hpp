@@ -16,9 +16,8 @@ const int MAX_PLY         = 90;
 struct FastMoveSink : MoveSinkBase<FastMoveSink> {
     std::array<std::array<Move, MAX_LEGAL_MOVES>, MAX_PLY> moves{};
     std::array<int, MAX_PLY>                               count{};
-    int                                                    ply = 0;
+    int                                                    ply = -1;
 
-    void clearPly(int ply) noexcept { count[ply] = 0; }
 
     template <MoveType  MoveT,
               PieceType MovedOrPromotedToPiece,
@@ -28,6 +27,11 @@ struct FastMoveSink : MoveSinkBase<FastMoveSink> {
         assert(count[ply] < MAX_LEGAL_MOVES);
         moves[ply][count[ply]++].setMove<MoveT, MovedOrPromotedToPiece, SideToMove, CapturedPiece>(
             from, to);
+    }
+
+    void setPly(int ply) {
+        this->ply  = ply;
+        count[ply] = 0;
     }
 };
 
