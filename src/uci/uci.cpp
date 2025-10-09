@@ -7,7 +7,8 @@ static void initializeIO() {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc >= 2 && std::string(argv[1]) == "bench") {
+    std::span<char*> args{argv, static_cast<size_t>(argc)};
+    if (args.size() >= 2 && std::string(args[1]) == "bench") {
         bitcrusher::uci::UCIHandler::handleBench();
         return 0;
     }

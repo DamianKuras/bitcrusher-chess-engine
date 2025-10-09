@@ -29,7 +29,7 @@ struct TestPerftMoveSink : MoveSinkBase<TestPerftMoveSink> {
     uint64_t      promotions_count{0};
     std::uint64_t castling_count{0};
     // Current depth. In leaf nodes this is used to count specific move types.
-    uint64_t depth{0};
+    int depth{0};
 
     std::array<std::array<Move, MAX_LEGAL_MOVES>, MAX_PLY> moves{};
     std::array<int, MAX_PLY>                               count{};
@@ -45,7 +45,7 @@ struct TestPerftMoveSink : MoveSinkBase<TestPerftMoveSink> {
         const Move move = moves[ply][count[ply]];
         count[ply]++;
 
-        if (depth != LEAF_DEPTH) {
+        if (ply != depth - 1) { // Not at leaf level
             return;
         }
         if (move.isEnPassant()) {
@@ -61,6 +61,13 @@ struct TestPerftMoveSink : MoveSinkBase<TestPerftMoveSink> {
             castling_count++;
         }
     }
+
+    void setPly(int ply) {
+        this->ply  = ply;
+        count[ply] = 0;
+    }
+
+    void setDepth(int depth) { this->depth = depth; }
 };
 
 using bitcrusher::BoardState;

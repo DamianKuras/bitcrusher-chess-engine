@@ -1,7 +1,6 @@
 #ifndef BITCRUSHER_MOVE_SINK_HPP
 #define BITCRUSHER_MOVE_SINK_HPP
 
-// #include "concepts.hpp"
 #include "bitboard_enums.hpp"
 #include "concepts.hpp"
 #include "move.hpp"
@@ -17,7 +16,6 @@ struct FastMoveSink : MoveSinkBase<FastMoveSink> {
     std::array<std::array<Move, MAX_LEGAL_MOVES>, MAX_PLY> moves{};
     std::array<int, MAX_PLY>                               count{};
     int                                                    ply = -1;
-
 
     template <MoveType  MoveT,
               PieceType MovedOrPromotedToPiece,

@@ -8,6 +8,7 @@
 #include "move.hpp"
 #include "move_processor.hpp"
 #include "move_sink.hpp"
+#include "perft.hpp"
 #include "restriction_context.hpp"
 #include "search.hpp"
 #include "transposition_table.hpp"
@@ -194,6 +195,18 @@ public:
         for (int i = 0; i < max_cores_ - 1; ++i) {
             workers_.emplace_back([this]() { this->workerThread(); });
         }
+    }
+
+    uint64_t performPerft(int depth) {
+        uint64_t           nodes{0};
+        FastMoveSink       sink;
+        RestrictionContext restriction_context;
+        if (board_.isWhiteMove()) {
+            nodes = perft<Color::WHITE>(depth, board_, move_processor_, sink, restriction_context);
+        } else {
+            nodes = perft<Color::BLACK>(depth, board_, move_processor_, sink, restriction_context);
+        }
+        return nodes;
     }
 
 private:

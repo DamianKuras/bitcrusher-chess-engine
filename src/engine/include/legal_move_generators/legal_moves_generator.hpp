@@ -25,7 +25,7 @@ void generateLegalMoves(const BoardState&   board,
                         MoveSinkT&          sink,
                         RestrictionContext& restriction_context,
                         int                 ply = 0) {
-                            
+
     if constexpr (RestrictionContextP == RestrictionContextPolicy::UPDATE) {
         updateRestrictionContext<Side>(board, restriction_context);
     }

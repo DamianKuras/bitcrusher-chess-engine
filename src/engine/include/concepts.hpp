@@ -4,22 +4,22 @@
 #include "bitboard_enums.hpp"
 #include "move.hpp"
 #include <concepts>
-#include <generator>
 
 namespace bitcrusher {
 
-template <typename Derived> struct MoveSinkBase {
+template <typename Derived> class MoveSinkBase {
+public:
     template <MoveType  MoveT,
               PieceType MovedOrPromotedToPiece,
               Color     SideToMove,
               PieceType CapturedPiece = PieceType::NONE>
     void emplace(Square from, Square to) noexcept {
-        // Interface enforcement via CRTP
+        // Interface enforcement via CRTP.
         static_cast<Derived*>(this)
             ->template emplace<MoveT, MovedOrPromotedToPiece, SideToMove, CapturedPiece>(from, to);
     }
 
-    void setPly(int ply) noexcept { static_cast<Derived*>(this)->setPly(ply); }
+    void setPly(int ply) { static_cast<Derived*>(this)->setPly(ply); }
 };
 
 template <typename T>
