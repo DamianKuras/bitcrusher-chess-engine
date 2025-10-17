@@ -3,6 +3,8 @@
 
 #include "bitboard_enums.hpp"
 #include "concepts.hpp"
+#include "pext_bitboards.hpp"
+#include <cstdint>
 
 namespace bitcrusher {
 
@@ -69,6 +71,19 @@ void generateOrderedPromotionCaptures(const uint64_t    attacks_bitboard,
     process_piece.template operator()<PieceType::PAWN>();
 }
 
+inline uint64_t getRookAttacks(Square square, uint64_t occupancy) {
+    occupancy &= PextBitboards::rook_masks[static_cast<int>(square)];
+    int index = _pext_u64(occupancy, PextBitboards::rook_masks[static_cast<int>(square)]);
+    return PextBitboards::attack_table[PextBitboards::rook_index[static_cast<int>(square)] + index];
+}
+
+inline uint64_t getBishopAttacks(Square square, uint64_t occupancy) {
+    occupancy &= PextBitboards::bishop_masks[static_cast<int>(square)];
+    int index = _pext_u64(occupancy, PextBitboards::bishop_masks[static_cast<int>(square)]);
+    return PextBitboards::attack_table[PextBitboards::bishop_index[static_cast<int>(square)] +
+                                       index];
+}
+
 template <PieceType            MovedPieceT,
           Color                Side,
           auto                 DirectionalAttackGen,
@@ -82,8 +97,14 @@ void generateSlidingPieceMoves(uint64_t          source_squares,
     while (source_squares != EMPTY_BITBOARD) {
         Square   piece_sq = utils::popFirstSetSquare(source_squares);
         uint64_t piece_bb = convert::toBitboard(piece_sq);
-        uint64_t piece_attacks =
-            DirectionalAttackGen(piece_bb, board.getAllOccupancy()) & restriction_mask;
+ 
+        uint64_t piece_attacks{};
+        if constexpr (DirectionalAttackGen == generateHorizontalVerticalAttacks) {
+            piece_attacks = getRookAttacks(piece_sq, board.getAllOccupancy()) & restriction_mask;
+        } else {
+            piece_attacks = getBishopAttacks(piece_sq, board.getAllOccupancy()) & restriction_mask;
+        }
+
         generateOrderedCaptures<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
         if constexpr (MoveGenerationP == MoveGenerationPolicy::FULL) {
             uint64_t quiet_moves = piece_attacks & board.getEmptySquares();

@@ -26,6 +26,20 @@ workspace "BitcrusherChessEngine"
         defines {"DEBUG"}
         symbols "On"
         optimize "Debug"
+    
+    filter { "configurations:Debug", "action:gmake* or action:gcc*" }
+        symbols "On"
+        sanitize { 
+            "Thread",
+            "UndefinedBehavior",
+            "Fuzzer"
+        } 
+        buildoptions { 
+            "-fno-omit-frame-pointer",
+            "-g3"
+        }
+    filter { "action:gmake* or action:gcc*"}
+        buildoptions { "-mbmi2" }
         
     filter {"configurations:Release"}
         defines {"NDEBUG"}

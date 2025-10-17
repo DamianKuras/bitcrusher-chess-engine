@@ -18,9 +18,10 @@ void generateLegalKnightMoves(const BoardState&         board,
     uint64_t knights_not_pinned =
         restriction_context.nonRestricted(board.getBitboard<PieceType::KNIGHT, Side>());
     while (knights_not_pinned) {
-        Square   knight_square  = utils::popFirstSetSquare(knights_not_pinned);
-        uint64_t knight_attacks = generateKnightsAttacks(convert::toBitboard(knight_square)) &
-                                  restriction_context.checkmask;
+        Square knight_square = utils::popFirstSetSquare(knights_not_pinned);
+
+        uint64_t knight_attacks =
+            generateKnightAttacks(knight_square) & restriction_context.checkmask;
         uint64_t knight_quiet_moves = knight_attacks & board.getEmptySquares();
         generateOrderedCaptures<Side, PieceType::KNIGHT>(knight_attacks, sink, board,
                                                          knight_square);

@@ -3,6 +3,7 @@
 
 #include "attack_generators/king_attacks.hpp"
 #include "attack_generators/squares_attacked.hpp"
+#include "bitboard_conversions.hpp"
 #include "bitboard_enums.hpp"
 #include "concepts.hpp"
 #include "move.hpp"
@@ -36,7 +37,7 @@ void generateLegalKingMoves(const BoardState&        board,
     Square king_square = utils::getFirstSetSquare(board.getBitboard<PieceType::KING, Side>());
 
     // Captures.
-    const uint64_t king_attacks = generateKingAttacks(board.getBitboard<PieceType::KING, Side>()) &
+    const uint64_t king_attacks = generateKingAttacks(king_square) &
                                   (~generateSquaresAttackedXRayingOpponentKing<! Side>(board));
     generateOrderedCaptures<Side, PieceType::KING>(king_attacks, sink, board, king_square);
     if constexpr (MoveGenerationP == MoveGenerationPolicy::CAPTURES_ONLY) {
