@@ -32,7 +32,7 @@ Epd stringToEPD(const std::string& line) {
             ++field_count;
         } else if (token == "bm") {
             iss >> epd.best_move;
-            epd.best_move.pop_back(); // remove ';' after best move
+            epd.best_move.pop_back(); // Remove ';' after best move.
         }
     }
     return epd;
@@ -49,6 +49,19 @@ Epd stringToEPD(const std::string& line) {
         throw std::runtime_error("Error: Unable to read from file: " + file_path.string());
     }
     return stringToEPD(line);
+}
+
+[[nodiscard]] std::vector<Epd> loadEPDsFromFile(const std::filesystem::path& file_path) {
+    std::ifstream file(file_path);
+    if (! file.is_open()) {
+        throw std::runtime_error("Error: Unable to open file: " + file_path.string());
+    }
+    std::string      line;
+    std::vector<Epd> epds;
+    while (std::getline(file, line)) {
+        epds.push_back(stringToEPD(line));
+    }
+    return epds;
 }
 
 } // namespace bench::utils
