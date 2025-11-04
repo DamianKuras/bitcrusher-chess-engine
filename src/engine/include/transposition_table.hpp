@@ -32,7 +32,7 @@ struct TranspositionTableEntry {
 
 class TranspositionTable {
     std::vector<TranspositionTableEntry> table_;
-    std::array<std::mutex, BUCKET_COUNT> locks_; // One mutex per bucket.
+    std::vector<std::mutex>              locks_; // One mutex per bucket.
 
     uint32_t size_{DEFAULT_TT_SIZE};
 
@@ -45,10 +45,9 @@ class TranspositionTable {
 #endif
 
 public:
-    TranspositionTable() : table_(DEFAULT_TT_SIZE) {};
+    TranspositionTable() : table_(DEFAULT_TT_SIZE), locks_(BUCKET_COUNT) {};
 
     void store(uint64_t key, TranspositionTableEntry entry) {
-        assert(! entry.best_move.isNullMove());
         assert(entry.value != ON_EVALUATION);
         uint64_t                    index = indexForKey(key);
         std::lock_guard<std::mutex> lock(getLock(key));

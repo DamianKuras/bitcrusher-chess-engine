@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <stop_token>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace bitcrusher {
@@ -36,10 +37,11 @@ struct SearchParameters {
     int  mate_in_x{0};    // Search fo a mate in x moves.
     int  move_time_ms{0}; // Search x mseconds.
     bool infinite{false};
+    bool use_quiescence_search{true};
 
-    std::vector<std::string> search_moves; // Limit search only to selected moves.
+    std::unordered_set<std::string> search_moves; // Limit search only to selected moves.
 
-    void addSearchMove(std::string_view move) { search_moves.emplace_back(move); }
+    void addSearchMove(const std::string& move) { search_moves.insert(move); }
 };
 
 struct SharedSearchContext {
@@ -87,6 +89,8 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
     if (shouldStopSearching(st, start_time, max_search_time_ms, search_ctx.nodes_searched.load())) {
         return SEARCH_INTERRUPTED;
     }
+
+    search_ctx.nodes_searched.fetch_add(1, std::memory_order::relaxed);
 
     updateRestrictionContext<Side>(board, restriction_context);
 
@@ -144,7 +148,7 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
 
 // Alpha is minimum score that the maximizing player is assured of.
 // Beta is maximum score that the minimizing player is assured of.
-template <Color Side, MoveSink MoveSinkT>
+template <Color Side, bool UseQuiescenceSearch = true, MoveSink MoveSinkT>
 int search(SharedSearchContext&                  search_ctx,
            BoardState&                           board,
            MoveProcessor&                        move_processor,
@@ -167,6 +171,7 @@ int search(SharedSearchContext&                  search_ctx,
     if (shouldStopSearching(st, start_time, max_search_time_ms, search_ctx.nodes_searched.load())) {
         return SEARCH_INTERRUPTED;
     }
+
     // Transposition table cutoff.
     uint64_t                zobrist_key  = board.getZobristHash();
     TranspositionTableEntry stored_entry = search_ctx.tt.getEntry(zobrist_key);
@@ -228,10 +233,12 @@ int search(SharedSearchContext&                  search_ctx,
 
     if (depth == 0 || (search_parameters.max_nodes > 0 &&
                        search_ctx.nodes_searched >= search_parameters.max_nodes)) {
-        int eval = quiescenceSearch<Side, MoveSinkT>(search_ctx, board, move_processor,
+        if constexpr (UseQuiescenceSearch) {
+            return quiescenceSearch<Side, MoveSinkT>(search_ctx, board, move_processor,
                                                      restriction_context, -beta, -alpha, st,
                                                      start_time, max_search_time_ms, sink, ply + 1);
-        return eval;
+        }
+        return basicEval(board, Side);
     }
 
     // Move ordering.
@@ -246,8 +253,8 @@ int search(SharedSearchContext&                  search_ctx,
 
     // Search the node.
     search_ctx.tt.addSearched(zobrist_key);
-
     search_ctx.nodes_searched.fetch_add(1, std::memory_order_relaxed);
+
     int               best_score = -CHECKMATE_BASE;
     Move              best_move  = Move::none();
     std::vector<bool> needs_search(sink.count[ply], true);
@@ -257,18 +264,23 @@ int search(SharedSearchContext&                  search_ctx,
         int start_i = 0;
         int end_i   = sink.count[ply];
         for (int i = start_i; i < end_i; i++) {
+            Move move = sink.moves[ply][i];
+            // Skips moves not in search moves if search moves has moves.
+            if (ply == 0 && search_parameters.search_moves.size() > 0 &&
+                ! search_parameters.search_moves.contains(toUci(move))) {
+                needs_search[i] = false;
+            }
             if (! needs_search[i]) {
                 // Skip moves already fully evaluated in a prior pass.
                 continue;
             }
 
-            Move move = sink.moves[ply][i];
             move_processor.applyMove(board, move);
             bool exclusive = iteration == 0 && i != 0;
-            int  eval      = -search<! Side, MoveSinkT>(search_ctx, board, move_processor,
-                                                        search_parameters, restriction_context, depth - 1,
-                                                        -beta, -alpha, st, start_time, max_search_time_ms,
-                                                        sink, ply + 1, exclusive);
+            int  eval      = -search<! Side, UseQuiescenceSearch>(
+                search_ctx, board, move_processor, search_parameters, restriction_context,
+                depth - 1, -beta, -alpha, st, start_time, max_search_time_ms, sink, ply + 1,
+                exclusive);
             move_processor.undoMove(board, move);
             if (abs(eval) == SEARCH_INTERRUPTED) {
                 return SEARCH_INTERRUPTED;

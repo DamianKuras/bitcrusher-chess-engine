@@ -229,10 +229,16 @@ private:
             int                  thread_search_time_ms = search_time_ms_;
             SharedSearchContext& ctx                   = search_ctx_;
             lock.unlock();
+            if (local_options.use_quiescence_search) {
+                performSearch<FastMoveSink, true, true>(
+                    local_options, thread_board, thread_move_processor, stop_token,
+                    thread_start_time, thread_search_time_ms, ctx);
+            } else {
+                performSearch<FastMoveSink, true, false>(
+                    local_options, thread_board, thread_move_processor, stop_token,
+                    thread_start_time, thread_search_time_ms, ctx);
+            }
 
-            performSearch<FastMoveSink, true>(local_options, thread_board, thread_move_processor,
-                                              stop_token, thread_start_time, thread_search_time_ms,
-                                              ctx);
             handleSearchFinished();
         }
     }
@@ -293,7 +299,7 @@ private:
         workers_shutdown_ = false; // Reset for future searches.
     }
 
-    template <MoveSink MoveSinkT, bool IsMainThread = false>
+    template <MoveSink MoveSinkT, bool IsMainThread = false, bool UseQuiescenceSearch = true>
     void performSearch(const SearchParameters&                            search_parameters,
                        BoardState                                         board,
                        MoveProcessor                                      move_processor,
@@ -307,15 +313,13 @@ private:
 
             int score{0};
             if (board.isWhiteMove()) {
-                score = bitcrusher::search<Color::WHITE>(search_ctx, board, move_processor,
-                                                         search_parameters, restriction_context,
-                                                         depth * 2, -CHECKMATE_BASE, CHECKMATE_BASE,
-                                                         st, start_time, search_time_ms, sink);
+                score = bitcrusher::search<Color::WHITE, UseQuiescenceSearch>(
+                    search_ctx, board, move_processor, search_parameters, restriction_context,
+                    depth, -CHECKMATE_BASE, CHECKMATE_BASE, st, start_time, search_time_ms, sink);
             } else {
-                score = bitcrusher::search<Color::BLACK>(search_ctx, board, move_processor,
-                                                         search_parameters, restriction_context,
-                                                         depth * 2, -CHECKMATE_BASE, CHECKMATE_BASE,
-                                                         st, start_time, search_time_ms, sink);
+                score = bitcrusher::search<Color::BLACK, UseQuiescenceSearch>(
+                    search_ctx, board, move_processor, search_parameters, restriction_context,
+                    depth, -CHECKMATE_BASE, CHECKMATE_BASE, st, start_time, search_time_ms, sink);
             }
             if constexpr (IsMainThread) {
                 if (abs(score) != SEARCH_INTERRUPTED) {

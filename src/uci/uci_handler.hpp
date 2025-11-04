@@ -240,7 +240,7 @@ private:
             } else if (option == "searchmoves") { // Searchmoves should be last.
                 // Collect subsequent search moves until end.
                 while (++iter != end_iter) {
-                    params.addSearchMove(*iter);
+                    params.addSearchMove(std::string(*iter));
                 }
             } else if (option == "perft") {
                 int perft_depth{0};

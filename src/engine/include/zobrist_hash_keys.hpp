@@ -14,9 +14,15 @@ class ZobristKeys {
     inline static uint64_t                                                    is_black_move_zobrist;
     inline static std::array<uint64_t, CASTLING_RIGHTS_COUNT> zobrist_castling_rights;
     inline static std::array<uint64_t, BOARD_DIMENSION>       zobrist_en_passant_file;
+    inline static bool                                        initialized = false;
 
 public:
     static void init(uint64_t seed) {
+        if (initialized) {
+            return;
+        }
+
+        initialized = true;
         std::mt19937_64 rng(seed);
         for (int i = 0; i < SQUARE_COUNT; i++) {
             for (int j = 0; j < PIECE_COUNT; j++) {
