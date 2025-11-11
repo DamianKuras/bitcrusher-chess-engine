@@ -39,7 +39,13 @@ public:
     SearchManager& operator=(SearchManager&&)      = delete;
 
     ~SearchManager() {
+
+        if (search_active_.load()) {
+            stopSearch();
+            waitUntilSearchFinished();
+        }
         {
+            std::lock_guard<std::mutex> lock(mutex_);
             shutdown_ = true;
             condition_.notify_all();
         }
@@ -51,6 +57,12 @@ public:
             if (thread.joinable()) {
                 thread.join();
             }
+        }
+        workers_.clear();
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            onDepthCompleted_ = nullptr;
+            onSearchFinished_ = nullptr;
         }
     }
 
@@ -148,7 +160,7 @@ public:
         MoveProcessor mp;
 
         mp.applyMove(pv_board, best_move_);
-        int max_remaining_moves_in_pv = (depth * 2) - 1;
+        int max_remaining_moves_in_pv = depth - 1;
         while (max_remaining_moves_in_pv-- > 0) {
             uint64_t hash            = pv_board.getZobristHash();
             auto     best_move_entry = search_ctx_.tt.getEntry(hash);
@@ -166,9 +178,10 @@ public:
 
     std::string getScore() const {
         if (std::abs(score_) >= CHECKMATE_THRESHOLD) {
-            int mate_distance = CHECKMATE_BASE - std::abs(score_);
-            int moves_to_mate = (mate_distance + 1) / 2;
-            return "mate " + std::to_string(moves_to_mate);
+            int         mate_distance = CHECKMATE_BASE - std::abs(score_);
+            int         moves_to_mate = (mate_distance + 1) / 2;
+            std::string sign          = score_ < 0 ? "-" : "";
+            return "mate " + sign + std::to_string(moves_to_mate);
         }
 
         return "cp " + std::to_string(score_);
@@ -309,7 +322,7 @@ private:
                        SharedSearchContext&                               search_ctx) {
         FastMoveSink       sink;
         RestrictionContext restriction_context;
-        for (int depth = 1; depth <= search_parameters.max_depth; depth++) {
+        for (int depth = 1; depth <= search_parameters.max_ply; depth++) {
 
             int score{0};
             if (board.isWhiteMove()) {
@@ -326,7 +339,7 @@ private:
                     assert(abs(score) != ON_EVALUATION);
                     TranspositionTableEntry root_move_entry =
                         search_ctx_.tt.getEntry(board.getZobristHash());
-                    assert(! root_move_entry.best_move.isNullMove());
+                    assert(root_move_entry.value != ON_EVALUATION);
                     best_move_ = root_move_entry.best_move;
                     score_     = score;
                     if (onDepthCompleted_) {

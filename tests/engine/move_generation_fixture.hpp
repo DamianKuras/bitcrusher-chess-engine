@@ -4,6 +4,7 @@
 #include "bitboard_enums.hpp"
 #include "board_state.hpp"
 #include "concepts.hpp"
+#include "legal_move_generators/pext_bitboards.hpp"
 #include "move.hpp"
 #include "restriction_context.hpp"
 #include <gtest/gtest.h>
@@ -35,7 +36,6 @@ struct TestMoveSink : MoveSinkBase<TestMoveSink> {
         m.setMove<MoveT, MovedOrPromotedToPiece, SideToMove, CapturedPiece>(from, to);
         moves.insert(toUci(m));
     }
-
 };
 
 static_assert(MoveSink<TestMoveSink>);
@@ -57,6 +57,7 @@ struct LegalMovesTestCase {
 };
 
 class LegalMoveGenerationParametrizedTest : public ::testing::TestWithParam<LegalMovesTestCase> {
+
 private:
     BoardState   board_;
     TestMoveSink sink_;

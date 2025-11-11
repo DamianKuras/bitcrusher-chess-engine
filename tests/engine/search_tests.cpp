@@ -35,7 +35,7 @@ TEST(searchTests, SearchShouldOnlyUseOnlySearchMovesIfSpecified) {
     search_manager.setPos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     bitcrusher::SearchParameters params;
     params.addSearchMove("e2e4");
-    params.max_depth             = 1;
+    params.max_ply               = 1;
     params.use_quiescence_search = false;
 
     search_manager.startSearch<bitcrusher::FastMoveSink>(params);
@@ -56,7 +56,7 @@ TEST(searchTests, SearchShouldRestrictToMultipleSearchMoves) {
     params.addSearchMove("e2e4");
     params.addSearchMove("d2d4");
     params.addSearchMove("c2c4");
-    params.max_depth             = 1;
+    params.max_ply               = 1;
     params.use_quiescence_search = false;
 
     search_manager.startSearch<bitcrusher::FastMoveSink>(params);
@@ -73,7 +73,7 @@ TEST(searchTests, SearchMovesWithInvalidMoveShouldNotSearch) {
     search_manager.setPos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     bitcrusher::SearchParameters params;
     params.addSearchMove("e2e5");
-    params.max_depth             = 1;
+    params.max_ply               = 1;
     params.use_quiescence_search = false;
 
     search_manager.startSearch<bitcrusher::FastMoveSink>(params);
@@ -94,7 +94,7 @@ TEST(searchTests, SearchMovesProduceConsistentEvaluationAsUnrestricted) {
         });
     unrestricted_search_manager.setPos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     bitcrusher::SearchParameters params_unrestricted;
-    params_unrestricted.max_depth             = 3;
+    params_unrestricted.max_ply               = 3;
     params_unrestricted.use_quiescence_search = false;
 
     unrestricted_search_manager.startSearch<bitcrusher::FastMoveSink>(params_unrestricted);
@@ -110,7 +110,7 @@ TEST(searchTests, SearchMovesProduceConsistentEvaluationAsUnrestricted) {
         });
     restricted_search_manager.setPos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     bitcrusher::SearchParameters params_restricted{};
-    params_restricted.max_depth             = 3;
+    params_restricted.max_ply               = 3;
     params_restricted.use_quiescence_search = false;
     params_restricted.addSearchMove(unrestricted_best_move);
 
@@ -118,4 +118,44 @@ TEST(searchTests, SearchMovesProduceConsistentEvaluationAsUnrestricted) {
     restricted_search_manager.waitUntilSearchFinished();
 
     EXPECT_EQ(unrestricted_search_eval, restricted_search_eval);
+}
+
+TEST(searchTests, MateIn1) {
+    SearchManager search_manager{};
+    std::string   best_move;
+    std::string   eval;
+    search_manager.setOnSearchFinished([&search_manager, &best_move, &eval]() {
+        best_move = search_manager.bestMoveUci();
+        eval      = search_manager.getScore();
+    });
+    search_manager.setPos("1rb5/4r3/3p1npb/3kp1P1/1P3P1P/5nR1/2Q1BK2/bN4NR w - - 3 61");
+    bitcrusher::SearchParameters params;
+    params.max_ply               = 1;
+    params.use_quiescence_search = false;
+
+    search_manager.startSearch<bitcrusher::FastMoveSink>(params);
+    search_manager.waitUntilSearchFinished();
+
+    EXPECT_EQ(best_move, "c2c4");
+    EXPECT_EQ(eval, "mate 1");
+}
+
+TEST(searchTests, GettingMatedIn1) {
+    SearchManager search_manager{};
+    std::string   best_move;
+    std::string   eval;
+    search_manager.setOnSearchFinished([&search_manager, &best_move, &eval]() {
+        best_move = search_manager.bestMoveUci();
+        eval      = search_manager.getScore();
+    });
+    search_manager.setPos("r1bq2r1/b4pk1/p1pp1p1Q/1p2pP2/1P2P1PB/3P4/1PP3P1/R3K2R b - - 1 1");
+    bitcrusher::SearchParameters params;
+    params.max_ply               = 2;
+    params.use_quiescence_search = false;
+
+    search_manager.startSearch<bitcrusher::FastMoveSink>(params);
+    search_manager.waitUntilSearchFinished();
+
+    EXPECT_EQ(best_move, "g7h6");
+    EXPECT_EQ(eval, "mate -1");
 }

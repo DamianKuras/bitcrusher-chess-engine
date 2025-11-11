@@ -6,7 +6,6 @@
 #include "move_processor.hpp"
 #include "zobrist_hash_keys.hpp"
 #include <gtest/gtest.h>
-#include <utility>
 
 using bitcrusher::BoardState;
 using bitcrusher::CastlingRights;
@@ -386,7 +385,7 @@ TEST_F(MoveProcessorFixture, RepetitionWithDifferentMoveOrder) {
     move_processor.applyMove(board, white_knight_jump_forward);
     move_processor.applyMove(board, black_knight_jump_forward);
 
-    // Move bishops forward and back for both colors to break move order
+    // Move bishops forward and back for both colors to break move order.
     move_processor.applyMove(board, white_bishop_forward);
     move_processor.applyMove(board, black_bishop_forward);
 

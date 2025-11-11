@@ -32,7 +32,7 @@ struct SearchParameters {
     int  white_increment_ms{0};
     int  black_increment_ms{0};
     int  moves_to_go{0};  // Number of moves till next time control.
-    int  max_depth{300};  // Search max depth.
+    int  max_ply{300};    // Search max depth.
     int  max_nodes{-1};   // Search x nodes only.
     int  mate_in_x{0};    // Search fo a mate in x moves.
     int  move_time_ms{0}; // Search x mseconds.
@@ -89,7 +89,6 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
     if (shouldStopSearching(st, start_time, max_search_time_ms, search_ctx.nodes_searched.load())) {
         return SEARCH_INTERRUPTED;
     }
-
     search_ctx.nodes_searched.fetch_add(1, std::memory_order::relaxed);
 
     updateRestrictionContext<Side>(board, restriction_context);

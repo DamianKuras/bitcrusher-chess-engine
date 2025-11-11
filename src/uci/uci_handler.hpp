@@ -75,7 +75,7 @@ public:
     static inline void handleBench() {
         bitcrusher::SearchManager bench_search_manager{};
         bench_search_manager.setPosToStartpos();
-        bitcrusher::SearchParameters params{.max_depth = BENCH_SEARCH_DEPTH};
+        bitcrusher::SearchParameters params{.max_ply = BENCH_SEARCH_DEPTH};
 
         auto start_time = std::chrono::steady_clock::now();
         bench_search_manager.startSearch<FastMoveSink>(params);
@@ -228,7 +228,9 @@ private:
             } else if (option == "movestogo") {
                 parseNumber(*++iter, params.moves_to_go);
             } else if (option == "depth") {
-                parseNumber(*++iter, params.max_depth);
+                int depth = 0;
+                parseNumber(*++iter, depth);
+                params.max_ply = depth * 2;
             } else if (option == "nodes") {
                 parseNumber(*++iter, params.max_nodes);
             } else if (option == "mate") {
