@@ -1,20 +1,36 @@
 #ifndef BITCRUSHER_PEXT_BITBOARDS_HPP
 #define BITCRUSHER_PEXT_BITBOARDS_HPP
 
-#include "./attack_generators/diagonal_slider_attacks.hpp"
-#include "./attack_generators/horizontal_vertical_slider_attacks.hpp"
-#include "bitboard_conversions.hpp"
-#include "bitboard_enums.hpp"
-#include "file_rank_bitboards.hpp"
-#include <bit>
-#include <cstdint>
-#include <immintrin.h>
+#if defined(HAS_BMI2)
+#    include "./attack_generators/diagonal_slider_attacks.hpp"
+#    include "./attack_generators/horizontal_vertical_slider_attacks.hpp"
+#    include "bitboard_conversions.hpp"
+#    include "bitboard_enums.hpp"
+#    include "file_rank_bitboards.hpp"
+#    include <bit>
+#    include <cstdint>
+#    include <immintrin.h>
 
 namespace bitcrusher {
 
 inline constexpr int PEXT_SIZE = 107648;
 
+/// @brief Pre-computed magic bitboard lookup tables for fast O(1) sliding piece attacks.
+///
+/// Uses the PEXT (Parallel Bits Extract) BMI2 CPU instruction with magic bitboards to generate
+/// rook and bishop attacks in O(1) time. Leverages the PEXT instruction to convert occupancy
+/// bitboards into indices for pre-computed attack lookup tables.
+///
+/// **Initialization:**
+/// Attack tables are initialized once via static initializer.
 class PextBitboards {
+public:
+    inline static std::array<uint64_t, SQUARE_COUNT> rook_masks{};
+    inline static std::array<uint64_t, SQUARE_COUNT> bishop_masks{};
+    inline static std::array<uint64_t, SQUARE_COUNT> rook_index{};
+    inline static std::array<uint64_t, SQUARE_COUNT> bishop_index{};
+    inline static std::array<uint64_t, PEXT_SIZE>    attack_table{};
+
 private:
     static uint64_t getEdgeFilter(Square sq) {
         uint64_t mask = (RANK_BITBOARDS[std::to_underlying(Rank::R_1)] |
@@ -31,13 +47,6 @@ private:
     };
 
     inline static Initializer initializer;
-
-public:
-    inline static std::array<uint64_t, SQUARE_COUNT> rook_masks{};
-    inline static std::array<uint64_t, SQUARE_COUNT> bishop_masks{};
-    inline static std::array<uint64_t, SQUARE_COUNT> rook_index{};
-    inline static std::array<uint64_t, SQUARE_COUNT> bishop_index{};
-    inline static std::array<uint64_t, PEXT_SIZE>    attack_table{};
 
     static inline void initPextBitboards() {
         uint32_t current_index = 0;
@@ -79,5 +88,5 @@ public:
 };
 
 } // namespace bitcrusher
-
+#endif // defined(HAS_BMI2)
 #endif // BITCRUSHER_PEXT_BITBOARDS_HPP

@@ -22,6 +22,7 @@ workspace "BitcrusherChessEngine"
     cppdialect "C++23"
     targetdir(path.join(BIN_DIR,"%{cfg.buildcfg}"))
     objdir(path.join(OBJ_DIR,"%{cfg.buildcfg}", "%{prj.name}"))
+
     filter {"configurations:Debug"}
         defines {"DEBUG"}
         symbols "On"
@@ -30,7 +31,6 @@ workspace "BitcrusherChessEngine"
     filter { "configurations:Debug", "action:gmake* or action:gcc*" }
         symbols "On"
         sanitize { 
-            "Thread",
             "UndefinedBehavior",
             "Fuzzer"
         } 
@@ -38,8 +38,6 @@ workspace "BitcrusherChessEngine"
             "-fno-omit-frame-pointer",
             "-g3"
         }
-    filter { "action:gmake* or action:gcc*"}
-        buildoptions { "-mbmi2" }
         
     filter {"configurations:Release"}
         defines {"NDEBUG"}
@@ -73,6 +71,19 @@ workspace "BitcrusherChessEngine"
         description = "Enable building uci console application."
     }
 
+    newoption {
+        trigger = "with-bmi2",
+        description = "Enable BMI2 instructions"
+    }
+    filter {"options:with-bmi2"}
+        defines {"HAS_BMI2"}
+    
+    filter {"options:with-bmi2", "action:gmake* or action:gcc*"}
+        buildoptions { "-mbmi2" }
+
+    filter {"options:with-bmi2", "action:vs*"}
+        buildoptions { "/arch:AVX2" }
+
 
 -- Core Engine Library
 include (ENGINE_DIR)
@@ -89,5 +100,3 @@ end
 if _OPTIONS["with-uci"] then
     include(UCI_DIR)
 end
-
-

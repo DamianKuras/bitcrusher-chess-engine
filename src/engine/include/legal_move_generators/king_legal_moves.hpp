@@ -28,6 +28,14 @@ const uint64_t SQUARES_BETWEEN_WHITE_QUEENSIDE_CASTLE_NOT_ATTACKED =
 const uint64_t SQUARES_BETWEEN_BLACK_QUEENSIDE_CASTLE_NOT_ATTACKED =
     convert::toBitboard(Square::C8, Square::D8);
 
+/// @brief Generates all legal king moves for the given side, respecting restriction constraints.
+/// @tparam Side The Color of the side to move(Color::WHITE or Color::BLACK).
+/// @tparam MoveGenerationP Move generation scope policy. See MoveGenerationPolicy for available
+/// options.
+/// @tparam MoveSinkT MoveSinkT Type of the move sink that receives generated moves.
+/// @param board The current board state of the position.
+/// @param restriction_context Contains check and pin informations.
+/// @param sink The move sink object that will store the generated capture moves.
 template <Color                Side,
           MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
           MoveSink             MoveSinkT>
@@ -39,7 +47,7 @@ void generateLegalKingMoves(const BoardState&        board,
     // Captures.
     const uint64_t king_attacks = generateKingAttacks(king_square) &
                                   (~generateSquaresAttackedXRayingOpponentKing<! Side>(board));
-    generateOrderedCaptures<Side, PieceType::KING>(king_attacks, sink, board, king_square);
+    generateOrderedCapturesMVV_LVA<Side, PieceType::KING>(king_attacks, sink, board, king_square);
     if constexpr (MoveGenerationP == MoveGenerationPolicy::CAPTURES_ONLY) {
         return;
     }

@@ -8,7 +8,14 @@
 #include "shared_move_generation.hpp"
 
 namespace bitcrusher {
-
+/// @brief Generates all legal knight moves for the given side, respecting restriction constraints.
+/// @tparam Side The Color of the side to move(Color::WHITE or Color::BLACK).
+/// @tparam MoveGenerationP  Move generation scope policy. See MoveGenerationPolicy for available
+/// options.
+/// @tparam MoveSinkT  Type of the move sink that receives generated moves.
+/// @param board  The current board state of the position.
+/// @param restriction_context Contains check and pin informations.
+/// @param sink The move sink object that will store the generated capture moves.
 template <Color                Side,
           MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
           MoveSink             MoveSinkT>
@@ -23,8 +30,8 @@ void generateLegalKnightMoves(const BoardState&         board,
         uint64_t knight_attacks =
             generateKnightAttacks(knight_square) & restriction_context.checkmask;
         uint64_t knight_quiet_moves = knight_attacks & board.getEmptySquares();
-        generateOrderedCaptures<Side, PieceType::KNIGHT>(knight_attacks, sink, board,
-                                                         knight_square);
+        generateOrderedCapturesMVV_LVA<Side, PieceType::KNIGHT>(knight_attacks, sink, board,
+                                                                knight_square);
         if constexpr (MoveGenerationP == MoveGenerationPolicy::CAPTURES_ONLY) {
             return;
         }

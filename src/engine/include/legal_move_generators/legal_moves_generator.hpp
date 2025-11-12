@@ -12,21 +12,45 @@
 
 namespace bitcrusher {
 
-enum class RestrictionContextPolicy : bool {
+/// @brief Policy controlling whether restriction context is updated during move generation.
+///
+/// Use UPDATE when restriction context may be stale; use LEAVE when you've already updated it.
+enum class RestrictionContextUpdatePolicy : bool {
     UPDATE,
     LEAVE,
 };
 
-template <Color                    Side,
-          MoveGenerationPolicy     MoveGenerationP     = MoveGenerationPolicy::FULL,
-          RestrictionContextPolicy RestrictionContextP = RestrictionContextPolicy::UPDATE,
-          MoveSink                 MoveSinkT>
+/// @brief Generates all legal moves for the given side, respecting restriction constraints.
+///
+/// Entry point for move generation. Handles both normal positions and check scenarios:
+/// - Single check: Only moves that capture the checker or block are legal.
+/// - Double check: Only king moves are legal (must move out of check).
+/// - No check: All pieces can move freely (respecting their pin restrictions).
+///
+/// Optionally updates the restriction context before generation, or uses a pre-computed one.
+///
+/// @tparam Side The Color of the side to move(Color::WHITE or Color::BLACK).
+/// @tparam MoveGenerationP Move generation scope policy. See MoveGenerationPolicy for available
+/// options.
+/// @tparam RestrictionContextUpdateP Whether to update restriction context before generation.
+///         Set to UPDATE if context may be stale; LEAVE if you've already updated it.
+/// @tparam MoveSinkT Type of the move sink that receives generated moves.
+/// @param board The current board state of the position.
+/// @param sink The move sink object that will store the generated capture moves.
+/// @param restriction_context Contains check and pin informations.
+/// @param ply Current ply (half-move count) used by some move sinks for array-based storage.
+///        Defaults to 0.
+template <Color                          Side,
+          MoveGenerationPolicy           MoveGenerationP = MoveGenerationPolicy::FULL,
+          RestrictionContextUpdatePolicy RestrictionContextUpdateP =
+              RestrictionContextUpdatePolicy::UPDATE,
+          MoveSink MoveSinkT>
 void generateLegalMoves(const BoardState&   board,
                         MoveSinkT&          sink,
                         RestrictionContext& restriction_context,
                         int                 ply = 0) {
 
-    if constexpr (RestrictionContextP == RestrictionContextPolicy::UPDATE) {
+    if constexpr (RestrictionContextUpdateP == RestrictionContextUpdatePolicy::UPDATE) {
         updateRestrictionContext<Side>(board, restriction_context);
     }
 

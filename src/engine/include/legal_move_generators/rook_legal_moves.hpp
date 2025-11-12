@@ -8,26 +8,33 @@
 
 namespace bitcrusher {
 
+/// @brief Generates all legal rook moves for the given side, respecting restriction constraints.
+/// @tparam Side The Color of the side to move(Color::WHITE or Color::BLACK).
+/// @tparam MoveGenerationP  Move generation scope policy. See MoveGenerationPolicy for available
+/// options.
+/// @tparam MoveSinkT Type of the move sink that receives generated moves.
+/// @param board The current board state of the position.
+/// @param restriction_context Contains check and pin informations.
+/// @param sink
 template <Color                Side,
           MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
           MoveSink             MoveSinkT>
 void generateLegalRookMoves(const BoardState&         board,
                             const RestrictionContext& restriction_context,
                             MoveSinkT&                sink) {
+    // Rooks not pinned.
     uint64_t rooks_not_pinned =
         restriction_context.nonRestricted(board.getBitboard<PieceType::ROOK, Side>());
+    generateHorizontalVerticalSlidingPieceMoves<PieceType::ROOK, Side, MoveGenerationP>(
+        rooks_not_pinned, board, sink, restriction_context.checkmask);
 
-    generateSlidingPieceMoves<PieceType::ROOK, Side, generateHorizontalVerticalAttacks,
-                              MoveGenerationP>(rooks_not_pinned, board, sink,
-                                               restriction_context.checkmask);
-
+    // Rooks pinned horizontally/vertically.
     uint64_t rooks_pinned_only_hv = board.getBitboard<PieceType::ROOK, Side>() &
                                     restriction_context.pinmask_horizontal_vertical &
                                     ~restriction_context.pinmask_diagonal;
-    generateSlidingPieceMoves<PieceType::ROOK, Side, generateHorizontalVerticalAttacks,
-                              MoveGenerationP>(rooks_pinned_only_hv, board, sink,
-                                               restriction_context.checkmask &
-                                                   restriction_context.pinmask_horizontal_vertical);
+    generateHorizontalVerticalSlidingPieceMoves<PieceType::ROOK, Side, MoveGenerationP>(
+        rooks_pinned_only_hv, board, sink,
+        restriction_context.checkmask & restriction_context.pinmask_horizontal_vertical);
 }
 
 } // namespace bitcrusher

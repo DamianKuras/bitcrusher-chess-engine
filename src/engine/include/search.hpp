@@ -95,14 +95,15 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
 
     // Generate appropriate moves based on check state.
     if (restriction_context.check_count > 0) { // In check.
-        generateLegalMoves<Side, MoveGenerationPolicy::FULL, RestrictionContextPolicy::LEAVE>(
+        generateLegalMoves<Side, MoveGenerationPolicy::FULL, RestrictionContextUpdatePolicy::LEAVE>(
             board, sink, restriction_context, ply);
         if (sink.count[ply] == 0) { // No legal moves and in check.
             return -CHECKMATE_BASE;
         }
     } else {
         generateLegalMoves<Side, MoveGenerationPolicy::CAPTURES_ONLY,
-                           RestrictionContextPolicy::LEAVE>(board, sink, restriction_context, ply);
+                           RestrictionContextUpdatePolicy::LEAVE>(board, sink, restriction_context,
+                                                                  ply);
     }
 
     int static_eval = basicEval(board, Side);

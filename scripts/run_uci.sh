@@ -5,10 +5,10 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$REPO_ROOT" || exit 1
 
 # Generate Makefiles
-premake5 gmake --with-uci
+premake5 gmake --with-uci --with-bmi2
 
 # Build and run
-cd build
-make clean
-make Uci config=release_x64
+cd build &&
+make clean &&
+make Uci config=release_x64 && 
 ../bin/Release/Uci

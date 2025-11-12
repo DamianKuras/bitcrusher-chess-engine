@@ -10,6 +10,15 @@
 
 namespace bitcrusher {
 
+/// @brief Generates all legal bishop moves for the given side, respecting restriction constraints.
+///
+/// @tparam Side The Color of the side to move(Color::WHITE or Color::BLACK).
+/// @tparam MoveGenerationP Move generation scope policy. See MoveGenerationPolicy for available
+/// options.
+/// @tparam MoveSinkT Type of the move sink that receives generated moves.
+/// @param board  The current board state of the position.
+/// @param restriction_context Contains check and pin informations.
+/// @param sink The move sink object that will store the generated capture moves.
 template <Color                Side,
           MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
           MoveSink             MoveSinkT>
@@ -18,14 +27,14 @@ void generateLegalBishopMoves(const BoardState&        board,
                               MoveSinkT&               sink) {
     uint64_t bishops_not_pinned =
         restriction_context.nonRestricted(board.getBitboard<PieceType::BISHOP, Side>());
-    generateSlidingPieceMoves<PieceType::BISHOP, Side, generateDiagonalAttacks, MoveGenerationP>(bishops_not_pinned, board, sink,
-                                                       restriction_context.checkmask);
+    generateDiagonalSlidingPieceMoves<PieceType::BISHOP, Side, MoveGenerationP>(
+        bishops_not_pinned, board, sink, restriction_context.checkmask);
 
     uint64_t bishops_pinned_only_diagonally =
         board.getBitboard<PieceType::BISHOP, Side>() & restriction_context.pinmask_diagonal;
-    generateSlidingPieceMoves<PieceType::BISHOP, Side, generateDiagonalAttacks, MoveGenerationP>(bishops_pinned_only_diagonally, board, sink,
-                                                       restriction_context.checkmask &
-                                                           restriction_context.pinmask_diagonal);
+    generateDiagonalSlidingPieceMoves<PieceType::BISHOP, Side, MoveGenerationP>(
+        bishops_pinned_only_diagonally, board, sink,
+        restriction_context.checkmask & restriction_context.pinmask_diagonal);
 }
 
 } // namespace bitcrusher
