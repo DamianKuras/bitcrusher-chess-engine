@@ -11,7 +11,6 @@
 namespace bitcrusher {
 
 /// @brief Generates all legal bishop moves for the given side, respecting restriction constraints.
-///
 /// @tparam Side The Color of the side to move(Color::WHITE or Color::BLACK).
 /// @tparam MoveGenerationP Move generation scope policy. See MoveGenerationPolicy for available
 /// options.
