@@ -4,7 +4,7 @@
 EXE ?= Uci
 
 all:
-	cd .. && premake5 gmake2 --with-uci --with-bmi2
+	cd .. && premake5 gmake --with-uci --with-bmi2
 	cd ../build && $(MAKE) Uci config=release_x64
 	cp ../bin/Release/Uci $(EXE)
 
