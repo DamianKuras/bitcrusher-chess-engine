@@ -15,7 +15,7 @@ namespace bitcrusher {
 /// @tparam MoveSinkT Type of the move sink that receives generated moves.
 /// @param board The current board state of the position.
 /// @param restriction_context Contains check and pin informations.
-/// @param sink
+/// @param sink The move sink object that will store the generated capture moves.
 template <Color                Side,
           MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
           MoveSink             MoveSinkT>

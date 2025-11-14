@@ -322,17 +322,17 @@ private:
                        SharedSearchContext&                               search_ctx) {
         FastMoveSink       sink;
         RestrictionContext restriction_context;
-        for (int depth = 1; depth <= search_parameters.max_ply; depth++) {
+        for (int ply = 1; ply <= search_parameters.max_ply; ply++) {
 
             int score{0};
             if (board.isWhiteMove()) {
                 score = bitcrusher::search<Color::WHITE, UseQuiescenceSearch>(
-                    search_ctx, board, move_processor, search_parameters, restriction_context,
-                    depth, -CHECKMATE_BASE, CHECKMATE_BASE, st, start_time, search_time_ms, sink);
+                    search_ctx, board, move_processor, search_parameters, restriction_context, ply,
+                    -CHECKMATE_BASE, CHECKMATE_BASE, st, start_time, search_time_ms, sink);
             } else {
                 score = bitcrusher::search<Color::BLACK, UseQuiescenceSearch>(
-                    search_ctx, board, move_processor, search_parameters, restriction_context,
-                    depth, -CHECKMATE_BASE, CHECKMATE_BASE, st, start_time, search_time_ms, sink);
+                    search_ctx, board, move_processor, search_parameters, restriction_context, ply,
+                    -CHECKMATE_BASE, CHECKMATE_BASE, st, start_time, search_time_ms, sink);
             }
             if constexpr (IsMainThread) {
                 if (abs(score) != SEARCH_INTERRUPTED) {
@@ -342,8 +342,8 @@ private:
                     assert(root_move_entry.value != ON_EVALUATION);
                     best_move_ = root_move_entry.best_move;
                     score_     = score;
-                    if (onDepthCompleted_) {
-                        onDepthCompleted_(depth);
+                    if ((ply % 2 == 0) && onDepthCompleted_) {
+                        onDepthCompleted_(ply / 2);
                     }
                 } else {
                     break;

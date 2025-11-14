@@ -23,17 +23,16 @@ project "GoogleTest"
 project "Tests"
     kind "ConsoleApp"
     dependson {
-        "Engine",
-        "GoogleTest"
-       
+        "GoogleTest",
+        "Engine"
     }
     files {
         path.join(TESTS_DIR,"**.cpp"),
-        path.join(TESTS_DIR,"**.h")
+        path.join(TESTS_DIR,"**.hpp")
     }
     links {
-        "Engine",
-        "GoogleTest"
+        "GoogleTest",
+        "Engine"
     }
     includedirs {
         path.join(google_test_dir,"include"),
