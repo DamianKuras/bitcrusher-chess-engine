@@ -5,7 +5,7 @@ import random
 
 def get_engine_moves(fen, engine_path):
     command = f"position fen {fen}\n" \
-              f"go perft \n"
+              f"go movegen\n"
     result = subprocess.run([engine_path],input=command, capture_output=True, text=True)
     # Engine should output moves as UCI strings separated by spaces
     return set(result.stdout.strip().split())

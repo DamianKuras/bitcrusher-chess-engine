@@ -1,7 +1,5 @@
-
-
-#ifndef DEBUG_HPP
-#define DEBUG_HPP
+#ifndef BITCRUSHER_DEBUG_HPP
+#define BITCRUSHER_DEBUG_HPP
 
 #include "bitboard_enums.hpp"
 #include "bitboard_utils.hpp"
@@ -18,6 +16,7 @@ constexpr std::array FILE_ORDER{File::A, File::B, File::C, File::D,
                                 File::E, File::F, File::G, File::H};
 
 inline void printBitboard(uint64_t bitboard, const std::string& message = "") {
+    std::cout << "-------------------------------------------\n";
     if (message != "") {
         std::cout << message << "\n";
     }
@@ -25,7 +24,7 @@ inline void printBitboard(uint64_t bitboard, const std::string& message = "") {
     for (auto rank : RANK_ORDER) {
         std::cout << "r" << convert::toChar(rank) << " ";
         for (auto file : FILE_ORDER) {
-            bitcrusher::Square sq = bitcrusher::convert::toSquare(file, rank);
+            Square sq = convert::toSquare(file, rank);
             std::cout << utils::isSquareSet(bitboard, sq) << " ";
         }
 
@@ -33,9 +32,10 @@ inline void printBitboard(uint64_t bitboard, const std::string& message = "") {
     }
     std::cout << "\n   a b c d e f g h" << "\n";
     std::cout << "Bitboard value: " << bitboard << "\n \n";
+    std::cout << "-------------------------------------------\n";
 }
 
-inline void printBoard(const BoardState& board, const std::string& message = "") {
+inline bool printBoard(const BoardState& board, const std::string& message = "") {
     if (message != "") {
         std::cout << message << "\n";
     }
@@ -43,14 +43,16 @@ inline void printBoard(const BoardState& board, const std::string& message = "")
     for (auto rank : RANK_ORDER) {
         std::cout << "r" << convert::toChar(rank) << " ";
         for (auto file : FILE_ORDER) {
-            bitcrusher::Square sq = bitcrusher::convert::toSquare(file, rank);
+            Square sq = convert::toSquare(file, rank);
             std::cout << convert::toChar(board.getPieceOnSquare(sq)) << " ";
         }
 
         std::cout << "\n";
     }
     std::cout << "\n   a b c d e f g h" << "\n";
+    return true;
 }
+
 } // namespace bitcrusher::debug
 
-#endif
+#endif // BITCRUSHER_DEBUG_HPP
