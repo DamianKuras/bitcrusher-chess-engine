@@ -56,7 +56,9 @@ enum class File: std::uint8_t {
 };
 // clang-format on
 
+/// @brief Represents chess piece color.
 enum class Color : bool { WHITE, BLACK };
+
 enum class Side : bool { KINGSIDE, QUEENSIDE };
 
 enum class Diagonal : std::uint8_t {

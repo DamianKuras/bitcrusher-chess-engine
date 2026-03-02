@@ -13,21 +13,28 @@ Bitcrusher Chess Engine is a high-performance chess engine written in C++ that l
 - **Cross-Platform:** Designed to compile and run on major operating systems including Windows, macOS, and Linux.
 
 ## Prerequisites
+
 - **Build System:** [premake5](https://premake.github.io/).
 - **Compiler:** A premake5 compliant compiler depending on the operating system.
 
 ## Installation
+
 1. **Clone the Repository:**
    ```bash
    git clone https://github.com/DamianKuras/bitcrusher-chess-engine.git
    ```
+
 ## Building and compiling on Windows
 
 Generate a Visual Studio solution with all modules (engine, UCI, tests, benchmarks):
+
 ```bash
 premake5 vs2022 --with-tests --with-uci --with-benchmarks
 ```
-Open bitcrusher.sln in Visual Studio, build, and run the desired projects.
+
+In folder /build there should be a file BitcrusherChessEngine.sln after running these command.
+Open BitcrusherChessEngine.sln in Visual Studio  build, and run the desired projects.
+
 ## Building and compiling on Linux
 
 Generate GNU Makefiles:
@@ -43,14 +50,16 @@ cd build && make clean && make Uci config=debug_x64
 ```
 
 ### Running tests
+
 ```bash
 # Run fast validation suite (exclude long tests)
 cd build && make Tests config=debug_x64 && ../bin/Debug/Tests --gtest_filter=-*slow
 # Run all tests
-cd build && make Tests config=debug_x64 && ../bin/Debug/Tests 
+cd build && make Tests config=debug_x64 && ../bin/Debug/Tests
 ```
 
 ### Running benchmarks
+
 ```bash
 # Run fast benchmarks suite (exclude long benchmarks)
 cd build && make clean && make BenchmarkRunner config=release_x64 && cd  && ./bin/Release/BenchmarkRunner --benchmark_filter=-*slow
@@ -60,9 +69,18 @@ cd build && make clean && make BenchmarkRunner config=release_x64 && cd  && ./bi
 cd build && make clean && make BenchmarkRunner config=release_x64 && cd  && ./bin/Release/BenchmarkRunner --benchmark_filter=BM_perft/4/32
 ```
 
+## Documentation
+
+The project uses [Doxygen](https://doxygen.nl/) to generate HTML and LaTeX documentation from the source code. To generate the documentation locally, simply run:
+
+```bash
+doxygen Doxyfile
+```
+
 ## Acknowledgments
+
 - Inspired by various open source chess engines and [chess programming wiki](https://www.chessprogramming.org/Main_Page).
 
-
 ## License
+
 This project is licensed under the MIT License. See the LICENSE file for details.

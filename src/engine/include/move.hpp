@@ -30,8 +30,8 @@ public:
 
     [[nodiscard]] constexpr PieceType capturedPiece() const noexcept { return captured_piece_; }
 
-    // In a promotion move, moving_piece_ represents the piece the pawn is
-    // promoted to.
+    /// @brief In a promotion move, moving_piece_ represents the piece the pawn is
+    /// promoted to.
     [[nodiscard]] constexpr PieceType promotionPiece() const noexcept { return moving_piece_; }
 
     [[nodiscard]] constexpr bool isQuiet() const noexcept { return flag_ == MoveType::QUIET; }
@@ -63,7 +63,7 @@ public:
 
     [[nodiscard]] bool isNullMove() const noexcept { return flag_ == MoveType::NULL_MOVE; }
 
-    // Factory functions for creating moves:
+    /// @brief Factory functions for creating moves:
     [[nodiscard]] static Move
     createQuietMove(Square from, Square to, PieceType moved_piece) noexcept {
         return {from, to, moved_piece, MoveType::QUIET};

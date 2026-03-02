@@ -20,7 +20,7 @@ consteval std::array<uint64_t, BOARD_DIMENSION> createFileBitboards() {
     return array;
 }
 
-// File bitboards lookup indexed using File enum
+/// @brief File bitboards lookup indexed using File enum
 constexpr std::array<uint64_t, BOARD_DIMENSION> FILE_BITBOARDS = createFileBitboards();
 
 consteval std::array<uint64_t, BOARD_DIMENSION> createRankBitboards() {
@@ -44,7 +44,7 @@ consteval std::array<uint64_t, BOARD_DIMENSION> createRankBitboards() {
     return array;
 }
 
-// Rank bitboards lookup indexed using Rank enum
+/// @brief Rank bitboards lookup indexed using Rank enum
 static constexpr std::array<uint64_t, BOARD_DIMENSION> RANK_BITBOARDS = createRankBitboards();
 
 } // namespace bitcrusher

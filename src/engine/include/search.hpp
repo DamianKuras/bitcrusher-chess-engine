@@ -146,8 +146,8 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
     return best_score;
 }
 
-// Alpha is minimum score that the maximizing player is assured of.
-// Beta is maximum score that the minimizing player is assured of.
+/// @brief Alpha is minimum score that the maximizing player is assured of.
+/// Beta is maximum score that the minimizing player is assured of.
 template <Color Side, bool UseQuiescenceSearch = true, MoveSink MoveSinkT>
 int search(SharedSearchContext&                  search_ctx,
            BoardState&                           board,

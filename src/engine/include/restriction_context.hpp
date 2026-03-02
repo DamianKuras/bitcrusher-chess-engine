@@ -13,11 +13,11 @@
 namespace bitcrusher {
 
 struct RestrictionContext {
-    uint64_t checkers{EMPTY_BITBOARD};    // Pieces giving check to our king
-    uint64_t check_block{EMPTY_BITBOARD}; // Rays between checking pieces and our king
+    uint64_t checkers{EMPTY_BITBOARD};    // Pieces giving check to our king.
+    uint64_t check_block{EMPTY_BITBOARD}; // Rays between checking pieces and our king.
 
     uint64_t checkmask{EMPTY_BITBOARD};
-    // Pieces that are part of the pinmask can only move along pinmask
+    /// @brief Pieces that are part of the pinmask can only move along pinmask.
     uint64_t pinmask_diagonal{EMPTY_BITBOARD};
     uint64_t pinmask_horizontal_vertical{EMPTY_BITBOARD};
     uint8_t  check_count{0};
@@ -42,14 +42,18 @@ struct RestrictionContext {
     bool operator==(const RestrictionContext&) const = default;
 };
 
+/// @brief Checks for sliding piece checks and pins.
+///
+/// Sets the relevant bits in restriction_context(checkers, pinmask_diagonal,
+/// pinmask_horizontal_vertical)
 template <SlidingPieceType SlidingPieceT, typename AttackGenerator>
-void processSlidingPieceChecks(std::uint64_t       king_bitboard,
-                               std::uint64_t       enemy_sliders,
-                               std::uint64_t       line_occupancy,
-                               std::uint64_t       line_mask,
-                               std::uint64_t       our_occupancy,
-                               AttackGenerator     generate_attacks,
-                               RestrictionContext& restriction_context) {
+void processSlidingPieceChecksAndPins(std::uint64_t       king_bitboard,
+                                      std::uint64_t       enemy_sliders,
+                                      std::uint64_t       line_occupancy,
+                                      std::uint64_t       line_mask,
+                                      std::uint64_t       our_occupancy,
+                                      AttackGenerator     generate_attacks,
+                                      RestrictionContext& restriction_context) {
     const std::uint64_t line_attacks = generate_attacks(king_bitboard, line_occupancy, line_mask);
     const std::uint64_t slider_checkers = line_attacks & enemy_sliders;
     const std::uint64_t potential_pins  = line_attacks & our_occupancy;
@@ -84,11 +88,11 @@ void processSlidingPiece(BoardState&         board,
     std::uint64_t occ_diag  = board.getAllOccupancy() & diag_mask;
 
     std::uint64_t our_occupancy = board.getOwnOccupancy<SideToMove>();
-    processSlidingPieceChecks<generate_attacks1, SlidingPieceT>(
+    processSlidingPieceChecksAndPins<generate_attacks1, SlidingPieceT>(
         our_king_bitboard, enemy_sliders, occ_diag, diag_mask, our_occupancy, generate_attacks1,
         restriction_context);
 
-    processSlidingPieceChecks<generate_attacks2, SlidingPieceT>(
+    processSlidingPieceChecksAndPins<generate_attacks2, SlidingPieceT>(
         our_king_bitboard, enemy_sliders, occ_diag, diag_mask, our_occupancy, generate_attacks2,
         restriction_context);
 }
@@ -97,9 +101,9 @@ template <Color Side>
 inline void updateRestrictionContext(const BoardState&   board,
                                      RestrictionContext& restriction_context) {
     restriction_context.reset();
-    std::uint64_t our_king_bitboard = board.getBitboard<PieceType::KING, Side>();
+    const std::uint64_t our_king_bitboard = board.getBitboard<PieceType::KING, Side>();
 
-    std::uint64_t our_occupancy = board.getOwnOccupancy<Side>();
+    const std::uint64_t our_occupancy = board.getOwnOccupancy<Side>();
 
     // --- Pawn Checks ---
     std::uint64_t potential_checkers_pawns = generatePawnsAttacks<Side>(our_king_bitboard);
@@ -112,51 +116,53 @@ inline void updateRestrictionContext(const BoardState&   board,
     restriction_context.checkers |=
         generateKnightsAttacks(our_king_bitboard) & board.getBitboard<PieceType::KNIGHT, ! Side>();
 
-    // --- Ray Pieces Checks ---
+    // Diagonal sliding pieces checks.
     std::uint64_t enemy_bishops_queens = board.getDiagonalSliders<! Side>();
     Square our_king_square  = utils::getFirstSetSquare(board.getBitboard<PieceType::KING, Side>());
     std::uint64_t diag_mask = SQUARE_TO_DIAGONAL_BITBOARD[std::to_underlying(our_king_square)];
-    std::uint64_t occ_diag  = board.getAllOccupancy() & diag_mask;
+    std::uint64_t occupancy_diag = board.getAllOccupancy() & diag_mask;
 
-    processSlidingPieceChecks<SlidingPieceType::DIAGONAL>(
-        our_king_bitboard, enemy_bishops_queens, occ_diag, diag_mask, our_occupancy,
+    processSlidingPieceChecksAndPins<SlidingPieceType::DIAGONAL>(
+        our_king_bitboard, enemy_bishops_queens, occupancy_diag, diag_mask, our_occupancy,
         generateUpperLeftDiagonalAttacks, restriction_context);
 
-    processSlidingPieceChecks<SlidingPieceType::DIAGONAL>(
-        our_king_bitboard, enemy_bishops_queens, occ_diag, diag_mask, our_occupancy,
+    processSlidingPieceChecksAndPins<SlidingPieceType::DIAGONAL>(
+        our_king_bitboard, enemy_bishops_queens, occupancy_diag, diag_mask, our_occupancy,
         generateBottomRightDiagonalAttacks, restriction_context);
 
     std::uint64_t counter_diag_mask =
         SQUARE_TO_COUNTER_DIAGONAL_BITBOARD[std::to_underlying(our_king_square)];
 
     std::uint64_t occ_counter_diag = board.getAllOccupancy() & counter_diag_mask;
-    processSlidingPieceChecks<SlidingPieceType::DIAGONAL>(
+    processSlidingPieceChecksAndPins<SlidingPieceType::DIAGONAL>(
         our_king_bitboard, enemy_bishops_queens, occ_counter_diag, counter_diag_mask, our_occupancy,
         generateUpperRightDiagonalAttacks, restriction_context);
 
-    processSlidingPieceChecks<SlidingPieceType::DIAGONAL>(
+    processSlidingPieceChecksAndPins<SlidingPieceType::DIAGONAL>(
         our_king_bitboard, enemy_bishops_queens, occ_counter_diag, counter_diag_mask, our_occupancy,
         generateBottomLeftDiagonalAttacks, restriction_context);
+
+    // Horizontal vertical sliding piece checks.
 
     std::uint64_t enemy_rook_queens = board.getBitboard<PieceType::ROOK, ! Side>() |
                                       board.getBitboard<PieceType::QUEEN, ! Side>();
     std::uint64_t file_mask = FILE_BITBOARDS[std::to_underlying(convert::toFile(our_king_square))];
     std::uint64_t occ_file  = board.getAllOccupancy() & file_mask;
 
-    processSlidingPieceChecks<SlidingPieceType::HORIZONTAL_VERTICAL>(
+    processSlidingPieceChecksAndPins<SlidingPieceType::HORIZONTAL_VERTICAL>(
         our_king_bitboard, enemy_rook_queens, occ_file, file_mask, our_occupancy,
         generateBottomAttacks, restriction_context);
 
-    processSlidingPieceChecks<SlidingPieceType::HORIZONTAL_VERTICAL>(
+    processSlidingPieceChecksAndPins<SlidingPieceType::HORIZONTAL_VERTICAL>(
         our_king_bitboard, enemy_rook_queens, occ_file, file_mask, our_occupancy,
         generateTopAttacks, restriction_context);
     std::uint64_t rank_mask = RANK_BITBOARDS[std::to_underlying(convert::toRank(our_king_square))];
     std::uint64_t occ_rank  = board.getAllOccupancy() & rank_mask;
 
-    processSlidingPieceChecks<SlidingPieceType::HORIZONTAL_VERTICAL>(
+    processSlidingPieceChecksAndPins<SlidingPieceType::HORIZONTAL_VERTICAL>(
         our_king_bitboard, enemy_rook_queens, occ_rank, rank_mask, our_occupancy,
         generateLeftAttacks, restriction_context);
-    processSlidingPieceChecks<SlidingPieceType::HORIZONTAL_VERTICAL>(
+    processSlidingPieceChecksAndPins<SlidingPieceType::HORIZONTAL_VERTICAL>(
         our_king_bitboard, enemy_rook_queens, occ_rank, rank_mask, our_occupancy,
         generateRightAttacks, restriction_context);
 
@@ -164,17 +170,18 @@ inline void updateRestrictionContext(const BoardState&   board,
     restriction_context.updateCheckmask();
 }
 
-// Helper function to determine if we are in check after making en passant
-inline bool isCheckedHorizontallyOnRank(std::uint64_t our_king_bitboard,
+
+
+inline bool isCheckedHorizontallyOnRank(std::uint64_t king_bitboard,
                                         std::uint64_t occupancy,
                                         std::uint64_t enemy_horizontal_sliders,
                                         std::uint64_t rank_bitboard) {
     std::uint64_t occupancy_on_rank = occupancy & rank_bitboard;
 
     std::uint64_t left_attacks_from_king =
-        generateLeftAttacks(our_king_bitboard, occupancy_on_rank, occupancy_on_rank);
+        generateLeftAttacks(king_bitboard, occupancy_on_rank, occupancy_on_rank);
     std::uint64_t right_attacks_from_king =
-        generateRightAttacks(our_king_bitboard, occupancy_on_rank, rank_bitboard);
+        generateRightAttacks(king_bitboard, occupancy_on_rank, rank_bitboard);
 
     return ((left_attacks_from_king | right_attacks_from_king) & enemy_horizontal_sliders) !=
            EMPTY_BITBOARD;

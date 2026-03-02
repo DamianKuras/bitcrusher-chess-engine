@@ -10,7 +10,7 @@ namespace bitcrusher {
 
 class ZobristHasher {
 public:
-    // Compute 64-bit Zobrist hash for a given board position.
+    /// @brief Compute 64-bit Zobrist hash for a given board position.
     [[nodiscard]] static uint64_t createHash(const BoardState& board) {
         uint64_t hash = 0;
         // Pieces.

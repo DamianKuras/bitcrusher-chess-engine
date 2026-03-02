@@ -80,9 +80,10 @@ constexpr std::array<std::pair<PieceType, Color>, CHAR_TO_PIECE_TABLE_SIZE> CHAR
 
 } // namespace internal
 
-// Parses the FEN string into BoardState
-// Assumes the FEN input is correct and contains at
-// least board, side to move, en passant square and side to move
+/// @brief Parses the FEN string into BoardState
+///
+/// Assumes the FEN input is correct and contains at
+/// least board, side to move, en passant square and side to move.
 constexpr inline void parseFEN(std::string_view fen, BoardState& board) {
     board.reset();
     auto   iterator = fen.begin();

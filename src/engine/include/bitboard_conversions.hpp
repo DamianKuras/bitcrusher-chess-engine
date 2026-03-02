@@ -3,6 +3,7 @@
 
 #include "bitboard_enums.hpp"
 #include <array>
+#include <cassert>
 #include <cstdint>
 #include <utility>
 
@@ -25,23 +26,23 @@ namespace bitcrusher::convert {
     return static_cast<Rank>(BOARD_DIMENSION - convert::toDigit(c));
 }
 
-// Convert a single Square to its bitboard representation.
+/// @brief Convert a single Square to its bitboard representation.
 [[nodiscard]]
 static constexpr uint64_t toBitboard(Square square) noexcept {
     return 1ULL << std::to_underlying(square);
 }
 
-// Variadic template to create a bitboard from multiple squares.
-//
-// Example:
-//
-//  uint64_t initalWhiteRookBitboard =
-//  toBitboard(Square::A1,Square::H1)
-//
-// or
-//
-// uint64_t file_A = toBitboard(Square::A1, Square::A2, Square::A3,
-// Square::A4, Square::A5, Square::A6, Square::A7, Square::A8);
+/// @brief Variadic template to create a bitboard from multiple squares.
+///
+/// Example:
+///
+///  uint64_t initalWhiteRookBitboard =
+///  toBitboard(Square::A1,Square::H1)
+///
+/// or
+///
+/// uint64_t file_A = toBitboard(Square::A1, Square::A2, Square::A3,
+/// Square::A4, Square::A5, Square::A6, Square::A7, Square::A8);
 template <typename... Squares>
     requires(std::same_as<Squares, Square> && ...)
 [[nodiscard]] consteval uint64_t toBitboard(Squares... squares) {
@@ -68,7 +69,7 @@ template <Color Side> constexpr Color toOppositeColor() {
     }
 }
 
-// Return offset to get the square at the position in the choosen direction
+/// @brief Return offset to get the square at the position in the chosen direction
 [[nodiscard]] constexpr int toDelta(Direction direction) noexcept {
     switch (direction) {
     case Direction::TOP:
@@ -104,7 +105,7 @@ constexpr std::array<Diagonal, SQUARE_COUNT> SQUARE_TO_DIAGONAL = {
     Diagonal::A1,    Diagonal::A2B1, Diagonal::A3C1, Diagonal::A4D1, Diagonal::A5E1, Diagonal::A6F1, Diagonal::A7G1, Diagonal::A8H1
 };
 
-// Lookup table mapping each square (bitboard index 0=a1,...,63=h8) to its CounterDiagonal enum
+/// @brief Lookup table mapping each square (bitboard index 0=a1,...,63=h8) to its CounterDiagonal enum
 constexpr std::array<CounterDiagonal, SQUARE_COUNT> SQUARE_TO_COUNTER_DIAGONAL = {{
     // rank 8 (a8-h8)
     CounterDiagonal::A8,   CounterDiagonal::A7B8, CounterDiagonal::A6C8, CounterDiagonal::A5D8, CounterDiagonal::A4E8, CounterDiagonal::A3F8, CounterDiagonal::A2G8, CounterDiagonal::A1H8,
@@ -295,6 +296,16 @@ template <Color C, PieceType PieceT> [[nodiscard]] constexpr Piece toPiece() noe
 template <Color C> [[nodiscard]] constexpr Piece toPiece(PieceType piece_t) noexcept {
     return static_cast<Piece>(std::to_underlying(piece_t) +
                               (PIECE_COUNT_PER_SIDE * (C == Color::BLACK)));
+}
+
+[[nodiscard]] constexpr Color toColor(Piece piece){
+    assert(std::to_underlying(piece)<12);
+    if(std::to_underlying(piece)<6){
+        return Color::WHITE;
+    }
+    else{
+        return Color::BLACK;
+    }
 }
 
 } // namespace bitcrusher::convert
