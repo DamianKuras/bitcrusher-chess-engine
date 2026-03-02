@@ -67,12 +67,12 @@ BENCHMARK_DEFINE_F(MoveGeneratorBenchmarksFixture, GenerateMoves)(benchmark::Sta
     for (auto _ : state) {
         bitcrusher::generateLegalMoves<bitcrusher::Color::WHITE,
                                        bitcrusher::MoveGenerationPolicy::FULL,
-                                       bitcrusher::RestrictionContextPolicy::LEAVE>(
+                                       bitcrusher::RestrictionContextUpdatePolicy::LEAVE>(
             initial_position_board, sink, initial_position_restriction_context);
         total_moves += sink.count[0];
         bitcrusher::generateLegalMoves<bitcrusher::Color::WHITE,
                                        bitcrusher::MoveGenerationPolicy::FULL,
-                                       bitcrusher::RestrictionContextPolicy::LEAVE>(
+                                       bitcrusher::RestrictionContextUpdatePolicy::LEAVE>(
             kiwipete_position_board, sink, kiwipete_position_restriction_context);
         total_moves += sink.count[0];
         for (int i = 0; i < bratko_kopec_board_states.size(); i++) {
@@ -93,4 +93,4 @@ BENCHMARK_DEFINE_F(MoveGeneratorBenchmarksFixture, GenerateMoves)(benchmark::Sta
     }
 }
 
-BENCHMARK_REGISTER_F(MoveGeneratorBenchmarksFixture, GenerateMoves)->Repetitions(REPETITION_COUNT);
+// BENCHMARK_REGISTER_F(MoveGeneratorBenchmarksFixture, GenerateMoves)->Repetitions(REPETITION_COUNT);

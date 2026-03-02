@@ -8,12 +8,6 @@
 using bitcrusher::Color;
 using bitcrusher::MoveProcessor;
 using bitcrusher::RestrictionContext;
-using test_helpers::TestPerftMoveSink;
-
-namespace {
-
-
-} // namespace
 
 namespace test_helpers {
 

@@ -1,5 +1,5 @@
 #include "benchmark_helper_functions.hpp"
-
+#include "string"
 #include <fstream>
 #include <iostream>
 
@@ -10,7 +10,7 @@ std::string loadFENFromFile(const std::filesystem::path& file_path) {
     if (! file.is_open()) {
         throw std::runtime_error("Error: Unable to open file: " + file_path.string());
     }
-    std::string fen;
+    std::string fen{};
     if (! std::getline(file, fen)) {
         throw std::runtime_error("Error: Unable to read from file: " + file_path.string());
     }

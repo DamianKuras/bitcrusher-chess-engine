@@ -33,9 +33,9 @@ public:
 };
 
 BENCHMARK_DEFINE_F(PerftBenchmarksFixture, PerftInitial)(benchmark::State& state) {
-    const int                 depth = static_cast<int>(state.range(0));
-    uint64_t                  total_nodes = 0;
-    bitcrusher::MoveProcessor move_processor{};
+    const int                      depth       = static_cast<int>(state.range(0));
+    uint64_t                       total_nodes = 0;
+    bitcrusher::MoveProcessor      move_processor{};
     bitcrusher::RestrictionContext restriction_context{};
     bitcrusher::FastMoveSink       sink{};
     for (auto _ : state) {
@@ -49,14 +49,14 @@ BENCHMARK_DEFINE_F(PerftBenchmarksFixture, PerftInitial)(benchmark::State& state
 }
 
 BENCHMARK_DEFINE_F(PerftBenchmarksFixture, PerftKiwipete)(benchmark::State& state) {
-    const int                 depth = static_cast<int>(state.range(0));
-    bitcrusher::MoveProcessor move_processor{};
+    const int                      depth = static_cast<int>(state.range(0));
+    bitcrusher::MoveProcessor      move_processor{};
     bitcrusher::RestrictionContext restriction_context{};
     uint64_t                       total_nodes = 0;
     bitcrusher::FastMoveSink       sink;
     for (auto _ : state) {
-        total_nodes += perft<bitcrusher::Color::WHITE>(
-            depth, kiwipete_position_board, move_processor, sink, restriction_context);
+        total_nodes += perft<bitcrusher::Color::WHITE>(depth, kiwipete_position_board,
+                                                       move_processor, sink, restriction_context);
         benchmark::DoNotOptimize(total_nodes);
     }
     state.counters["leaf_nodes_per_second"] =
