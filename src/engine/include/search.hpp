@@ -120,6 +120,42 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
     }
     alpha = std::max(best_score, alpha);
 
+    auto scoreMove = [&](const Move& move) {
+        if (move.isCapture()) {
+            auto pieceValue = [](PieceType pt) {
+                switch (pt) {
+                    case PieceType::QUEEN: return 900;
+                    case PieceType::ROOK: return 500;
+                    case PieceType::BISHOP: return 330;
+                    case PieceType::KNIGHT: return 320;
+                    case PieceType::PAWN: return 100;
+                    default: return 0;
+                }
+            };
+            return 10 * pieceValue(move.capturedPiece()) - pieceValue(move.movingPiece()) + 10000;
+        }
+        if (move.isPromotion()) {
+            return 900 + 5000;
+        }
+        return 0;
+    };
+
+    int move_scores[MAX_LEGAL_MOVES];
+    for (int i = 0; i < sink.count[ply]; ++i) {
+        move_scores[i] = scoreMove(sink.moves[ply][i]);
+    }
+    
+    for (int i = 0; i < sink.count[ply] - 1; ++i) {
+        int best_idx = i;
+        for (int j = i + 1; j < sink.count[ply]; ++j) {
+            if (move_scores[j] > move_scores[best_idx]) {
+                best_idx = j;
+            }
+        }
+        std::swap(sink.moves[ply][i], sink.moves[ply][best_idx]);
+        std::swap(move_scores[i], move_scores[best_idx]);
+    }
+
     for (int i = 0; i < sink.count[ply]; i++) {
         Move move = sink.moves[ply][i];
         move_processor.applyMove(board, move);
@@ -241,14 +277,44 @@ int search(SharedSearchContext&                  search_ctx,
         return basicEval(board, Side);
     }
 
-    // Move ordering.
-    if (stored_entry.key == zobrist_key && stored_entry.depth > 0) {
-        for (int i = 0; i < sink.count[ply]; ++i) {
-            if (sink.moves[ply][i] == stored_entry.best_move) {
-                std::swap(sink.moves[ply][0], sink.moves[ply][i]);
-                break;
+    // Move ordering logic (MVV-LVA + TT Move).
+    Move tt_move = (stored_entry.key == zobrist_key && stored_entry.depth > 0) ? stored_entry.best_move : Move::none();
+
+    auto scoreMove = [&](const Move& move) {
+        if (move == tt_move) return 1000000;
+        if (move.isCapture()) {
+            auto pieceValue = [](PieceType pt) {
+                switch (pt) {
+                    case PieceType::QUEEN: return 900;
+                    case PieceType::ROOK: return 500;
+                    case PieceType::BISHOP: return 330;
+                    case PieceType::KNIGHT: return 320;
+                    case PieceType::PAWN: return 100;
+                    default: return 0;
+                }
+            };
+            return 10 * pieceValue(move.capturedPiece()) - pieceValue(move.movingPiece()) + 10000;
+        }
+        if (move.isPromotion()) {
+            return 900 + 5000; // rough value
+        }
+        return 0;
+    };
+
+    int move_scores[MAX_LEGAL_MOVES];
+    for (int i = 0; i < sink.count[ply]; ++i) {
+        move_scores[i] = scoreMove(sink.moves[ply][i]);
+    }
+    
+    for (int i = 0; i < sink.count[ply] - 1; ++i) {
+        int best_idx = i;
+        for (int j = i + 1; j < sink.count[ply]; ++j) {
+            if (move_scores[j] > move_scores[best_idx]) {
+                best_idx = j;
             }
         }
+        std::swap(sink.moves[ply][i], sink.moves[ply][best_idx]);
+        std::swap(move_scores[i], move_scores[best_idx]);
     }
 
     // Search the node.
