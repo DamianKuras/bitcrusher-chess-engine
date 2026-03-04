@@ -28,11 +28,6 @@ engine_log*
 #Python cache
 *__pycache__*
 
-fastchess_compliance.bat
-fastchess_vs_sf.bat
-create_compile_commands.bat
-run_stokcfish.bat
-run_valgrind.sh
 
 # Documentation
 html/

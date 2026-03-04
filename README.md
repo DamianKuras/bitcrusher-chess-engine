@@ -43,38 +43,37 @@ Generate GNU Makefiles:
 premake5 gmake2 --with-uci --with-tests --with-benchmarks
 ```
 
-### Running the Engine (UCI)
+### Running and Testing
+
+We provide cross-platform scripts (in `.sh` and `.bat` formats) in the `scripts/` directory to automate common tasks such as building, running tests, profiling, and launching the engine.
+
+For comprehensive documentation on available scripts, see [Scripts Documentation](scripts/README.md).
+
+**Examples:**
 
 ```bash
-cd build && make clean && make Uci config=debug_x64
-```
+# Run the UCI engine (Release mode)
+cd scripts
+./run_uci.sh       # Linux/macOS
+run_uci.bat        # Windows
 
-### Running tests
+# Run the test suite
+./run_tests.sh     # Linux/macOS
+run_tests.bat      # Windows
 
-```bash
-# Run fast validation suite (exclude long tests)
-cd build && make Tests config=debug_x64 && ../bin/Debug/Tests --gtest_filter=-*slow
-# Run all tests
-cd build && make Tests config=debug_x64 && ../bin/Debug/Tests
-```
-
-### Running benchmarks
-
-```bash
-# Run fast benchmarks suite (exclude long benchmarks)
-cd build && make clean && make BenchmarkRunner config=release_x64 && cd  && ./bin/Release/BenchmarkRunner --benchmark_filter=-*slow
-# Run all benchmarks
-cd build && make clean && make BenchmarkRunner config=release_x64 && cd  && ./bin/Release/BenchmarkRunner
-# Run specific benchmark for example BM_perft/4/32 [name/depth/repetition for perft benchmark]
-cd build && make clean && make BenchmarkRunner config=release_x64 && cd  && ./bin/Release/BenchmarkRunner --benchmark_filter=BM_perft/4/32
+# Run benchmarks
+./run_benchmarks.sh # Linux/macOS
+run_benchmarks.bat  # Windows
 ```
 
 ## Documentation
 
-The project uses [Doxygen](https://doxygen.nl/) to generate HTML and LaTeX documentation from the source code. To generate the documentation locally, simply run:
+The project uses [Doxygen](https://doxygen.nl/) to generate HTML and LaTeX documentation from the source code. To easily generate the documentation locally (which will safely clean up old folders first), use the provided script:
 
 ```bash
-doxygen Doxyfile
+cd scripts
+./generate_docs.sh      # Linux/macOS
+generate_docs.bat       # Windows
 ```
 
 ## Acknowledgments
