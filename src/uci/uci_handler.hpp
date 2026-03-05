@@ -264,7 +264,7 @@ private:
         }
     }
 
-    constexpr void handlePonderHit() {}
+    void handlePonderHit() { search_manager_.ponderHit(); }
 };
 
 } // namespace bitcrusher::uci

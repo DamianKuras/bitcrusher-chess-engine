@@ -79,8 +79,12 @@ public:
             search_options_            = search_parameters;
             start_time_                = std::chrono::steady_clock::now();
             search_ctx_.nodes_searched = 0;
-            stop_source_               = std::stop_source();
-            search_active_             = true;
+            search_ctx_.is_pondering   = search_parameters.ponder;
+            search_ctx_.time_limit_start_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                                  start_time_.time_since_epoch())
+                                                  .count();
+            stop_source_   = std::stop_source();
+            search_active_ = true;
             // Calculate move time allocation.
             if (board_.isWhiteMove()) {
                 search_time_ms_ = calculateMoveTimeAllocation<Color::WHITE>(search_parameters);
@@ -88,6 +92,7 @@ public:
             } else {
                 search_time_ms_ = calculateMoveTimeAllocation<Color::BLACK>(search_parameters);
             }
+            search_ctx_.max_search_time_ms = search_time_ms_;
         }
         condition_.notify_all(); // Notifies main and all worker threads.
     }
@@ -222,6 +227,25 @@ public:
         return nodes;
     }
 
+    void ponderHit() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (search_ctx_.is_pondering.load()) {
+            search_ctx_.is_pondering = false;
+            start_time_ = std::chrono::steady_clock::now();
+            search_ctx_.time_limit_start_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                                  start_time_.time_since_epoch())
+                                                  .count();
+                                                  
+            if (board_.isWhiteMove()) {
+                search_time_ms_ = calculateMoveTimeAllocation<Color::WHITE>(search_options_);
+            } else {
+                search_time_ms_ = calculateMoveTimeAllocation<Color::BLACK>(search_options_);
+            }
+            search_ctx_.max_search_time_ms = search_time_ms_;
+            condition_.notify_all();
+        }
+    }
+
 private:
     void workerThreadMain() {
         while (true) {
@@ -244,12 +268,17 @@ private:
             lock.unlock();
             if (local_options.use_quiescence_search) {
                 performSearch<FastMoveSink, true, true>(
-                    local_options, thread_board, thread_move_processor, stop_token,
-                    thread_start_time, thread_search_time_ms, ctx);
+                    local_options, thread_board, thread_move_processor, stop_token, ctx);
             } else {
                 performSearch<FastMoveSink, true, false>(
-                    local_options, thread_board, thread_move_processor, stop_token,
-                    thread_start_time, thread_search_time_ms, ctx);
+                    local_options, thread_board, thread_move_processor, stop_token, ctx);
+            }
+
+            {
+                std::unique_lock<std::mutex> wait_lock(mutex_);
+                condition_.wait(wait_lock, [this, stop_token] {
+                    return !search_ctx_.is_pondering.load() || shutdown_ || stop_token.stop_requested();
+                });
             }
 
             handleSearchFinished();
@@ -279,7 +308,7 @@ private:
             lock.unlock();
 
             performSearch<FastMoveSink>(local_options, thread_board, thread_move_processor,
-                                        stop_token, thread_start_time, thread_search_time_ms, ctx);
+                                        stop_token, ctx);
 
             // Wait for main thread to finish searching.
             {
@@ -313,13 +342,11 @@ private:
     }
 
     template <MoveSink MoveSinkT, bool IsMainThread = false, bool UseQuiescenceSearch = true>
-    void performSearch(const SearchParameters&                            search_parameters,
-                       BoardState                                         board,
-                       MoveProcessor                                      move_processor,
-                       std::stop_token&                                   st,
-                       std::chrono::time_point<std::chrono::steady_clock> start_time,
-                       int                                                search_time_ms,
-                       SharedSearchContext&                               search_ctx) {
+    void performSearch(const SearchParameters& search_parameters,
+                       BoardState              board,
+                       MoveProcessor           move_processor,
+                       std::stop_token&        st,
+                       SharedSearchContext&    search_ctx) {
         FastMoveSink       sink;
         RestrictionContext restriction_context;
         for (int ply = 1; ply <= search_parameters.max_ply; ply++) {
@@ -328,11 +355,11 @@ private:
             if (board.isWhiteMove()) {
                 score = bitcrusher::search<Color::WHITE, UseQuiescenceSearch>(
                     search_ctx, board, move_processor, search_parameters, restriction_context, ply,
-                    -CHECKMATE_BASE, CHECKMATE_BASE, st, start_time, search_time_ms, sink);
+                    -CHECKMATE_BASE, CHECKMATE_BASE, st, sink);
             } else {
                 score = bitcrusher::search<Color::BLACK, UseQuiescenceSearch>(
                     search_ctx, board, move_processor, search_parameters, restriction_context, ply,
-                    -CHECKMATE_BASE, CHECKMATE_BASE, st, start_time, search_time_ms, sink);
+                    -CHECKMATE_BASE, CHECKMATE_BASE, st, sink);
             }
             if constexpr (IsMainThread) {
                 if (abs(score) != SEARCH_INTERRUPTED) {

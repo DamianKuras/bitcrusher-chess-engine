@@ -48,25 +48,29 @@ struct SharedSearchContext {
     std::atomic<std::uint64_t> nodes_searched{0ULL};
     TranspositionTable         tt;
 
+    std::atomic<bool>    is_pondering{false};
+    std::atomic<int64_t> time_limit_start_ms{0};
+    std::atomic<int>     max_search_time_ms{0};
+
 #ifdef DEBUG
     std::atomic<int> beta_cutoffs{0};
     std::atomic<int> tt_cutoffs{0};
 #endif
 };
 
-inline bool shouldStopSearching(const std::stop_token&                st,
-                                std::chrono::steady_clock::time_point start_time,
-                                int                                   max_search_time_ms,
-                                uint64_t                              nodes_searched) {
+inline bool shouldStopSearching(const std::stop_token& st, SharedSearchContext& search_ctx) {
     if (st.stop_requested()) {
         return true;
     }
 
-    if ((nodes_searched & NODE_CHECK_INTERVAL) == 0) {
+    if ((search_ctx.nodes_searched.load() & NODE_CHECK_INTERVAL) == 0 && !search_ctx.is_pondering.load()) {
         auto now = std::chrono::steady_clock::now();
-        auto search_time =
-            std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time).count();
-        return search_time > max_search_time_ms;
+        auto current_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        int max_time = search_ctx.max_search_time_ms.load();
+        
+        if (max_time > 0 && (current_time_ms - search_ctx.time_limit_start_ms.load()) > max_time) {
+            return true;
+        }
     }
     return false;
 }
@@ -79,14 +83,12 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
                      int                                   alpha,
                      int                                   beta,
                      const std::stop_token&                st,
-                     std::chrono::steady_clock::time_point start_time,
-                     int                                   max_search_time_ms,
                      MoveSinkT&                            sink,
                      int                                   ply) {
     if (move_processor.hasCurrentPositionRepeated3Times()) {
         return 0;
     }
-    if (shouldStopSearching(st, start_time, max_search_time_ms, search_ctx.nodes_searched.load())) {
+    if (shouldStopSearching(st, search_ctx)) {
         return SEARCH_INTERRUPTED;
     }
     search_ctx.nodes_searched.fetch_add(1, std::memory_order::relaxed);
@@ -164,8 +166,7 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
                board.getAllOccupancy());
         // -Search because the opponent's best score becomes your worst.
         int eval = -quiescenceSearch<! Side, MoveSinkT>(
-            search_ctx, board, move_processor, restriction_context, -beta, -alpha, st, start_time,
-            max_search_time_ms, sink, ply + 1);
+            search_ctx, board, move_processor, restriction_context, -beta, -alpha, st, sink, ply + 1);
 
         move_processor.undoMove(board, move);
         if (abs(eval) == SEARCH_INTERRUPTED) {
@@ -194,8 +195,6 @@ int search(SharedSearchContext&                  search_ctx,
            int                                   alpha,
            int                                   beta,
            std::stop_token&                      st,
-           std::chrono::steady_clock::time_point start_time,
-           int                                   max_search_time_ms,
            MoveSinkT&                            sink,
            int                                   ply       = 0,
            bool                                  exclusive = false) {
@@ -204,7 +203,7 @@ int search(SharedSearchContext&                  search_ctx,
         return 0; // Draw.
     }
 
-    if (shouldStopSearching(st, start_time, max_search_time_ms, search_ctx.nodes_searched.load())) {
+    if (shouldStopSearching(st, search_ctx)) {
         return SEARCH_INTERRUPTED;
     }
 
@@ -272,7 +271,7 @@ int search(SharedSearchContext&                  search_ctx,
         if constexpr (UseQuiescenceSearch) {
             return quiescenceSearch<Side, MoveSinkT>(search_ctx, board, move_processor,
                                                      restriction_context, -beta, -alpha, st,
-                                                     start_time, max_search_time_ms, sink, ply + 1);
+                                                     sink, ply + 1);
         }
         return basicEval(board, Side);
     }
@@ -345,7 +344,7 @@ int search(SharedSearchContext&                  search_ctx,
             bool exclusive = iteration == 0 && i != 0;
             int  eval      = -search<! Side, UseQuiescenceSearch>(
                 search_ctx, board, move_processor, search_parameters, restriction_context,
-                depth - 1, -beta, -alpha, st, start_time, max_search_time_ms, sink, ply + 1,
+                depth - 1, -beta, -alpha, st, sink, ply + 1,
                 exclusive);
             move_processor.undoMove(board, move);
             if (abs(eval) == SEARCH_INTERRUPTED) {

@@ -159,3 +159,36 @@ TEST(searchTests, GettingMatedIn1) {
     EXPECT_EQ(best_move, "g7h6");
     EXPECT_EQ(eval, "mate -1");
 }
+
+TEST(searchTests, PonderingSuspendsSearchUntilPonderHit) {
+    SearchManager search_manager{};
+    std::string   best_move;
+    std::atomic<bool> search_finished{false};
+
+    search_manager.setOnSearchFinished([&search_manager, &best_move, &search_finished]() {
+        best_move = search_manager.bestMoveUci();
+        search_finished = true;
+    });
+    
+    // Setting up a basic position
+    search_manager.setPos("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    bitcrusher::SearchParameters params;
+    params.max_ply               = 3; // Let it search just 3 plys so it finishes the logical "search" quickly.
+    params.use_quiescence_search = false;
+    params.ponder                = true; // This should cause the manager to pause outputting.
+
+    search_manager.startSearch<bitcrusher::FastMoveSink>(params);
+    
+    // Wait for a small amount of time to ensure the logical search has completed,
+    // but the output shouldn't have been emitted yet because of pondering.
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    
+    EXPECT_FALSE(search_finished.load()); // Should not have emitted yet.
+
+    // Now trigger the ponder hit
+    search_manager.ponderHit();
+    search_manager.waitUntilSearchFinished(); // Wait for actual completion.
+
+    EXPECT_TRUE(search_finished.load());
+    EXPECT_NE(best_move, "");
+}
