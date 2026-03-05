@@ -49,3 +49,5 @@ cd scripts
 ### Engine Matches & Compliance
 - **`fastchess_compliance`**: Uses [fastchess](https://github.com/Disservin/fastchess) to run a UCI compliance check on the engine. Note: ensure `fastchess` is available in your system path.
 - **`fastchess_vs_sf`**: Uses [cutechess-cli](https://github.com/cutechess/cutechess) to run a quick 1-round match against Stockfish. Note: ensure `stockfish` and `cutechess-cli` are available in your system path.
+- **`run_elo_test_stc`**: Fast Short Time Control (STC) Elo testing script (10+0.1). Automatically clones the repository into isolated folders, compiles the engines, and runs a highly concurrent `fastchess` SPRT match. *Requires `data/pgn/8move_v3.pgn`.*
+- **`run_elo_test_ltc`**: Long Time Control (LTC) Elo testing script (60+0.6) for tournament-grade rating verification. *Requires `data/pgn/8move_v3.pgn`.*
