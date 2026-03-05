@@ -34,7 +34,7 @@ class TranspositionTable {
     std::vector<TranspositionTableEntry> table_;
     std::vector<std::mutex>              locks_; // One mutex per bucket.
 
-    uint32_t size_{DEFAULT_TT_SIZE};
+    size_t size_{DEFAULT_TT_SIZE};
 
     [[nodiscard]] std::mutex& getLock(uint64_t key) { return locks_[key % BUCKET_COUNT]; }
 

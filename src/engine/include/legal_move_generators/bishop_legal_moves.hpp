@@ -19,7 +19,7 @@ namespace bitcrusher {
 /// @param restriction_context Contains check and pin informations.
 /// @param sink The move sink object that will store the generated capture moves.
 template <Color                Side,
-          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
+          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::TESTS_FULL,
           MoveSink             MoveSinkT>
 void generateLegalBishopMoves(const BoardState&        board,
                               const RestrictionContext restriction_context,

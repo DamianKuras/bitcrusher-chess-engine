@@ -95,13 +95,13 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
 
     // Generate appropriate moves based on check state.
     if (restriction_context.check_count > 0) { // In check.
-        generateLegalMoves<Side, MoveGenerationPolicy::FULL, RestrictionContextUpdatePolicy::LEAVE>(
+        generateLegalMoves<Side, MoveGenerationPolicy::COMPETITIVE_FULL, RestrictionContextUpdatePolicy::LEAVE>(
             board, sink, restriction_context, ply);
         if (sink.count[ply] == 0) { // No legal moves and in check.
             return -CHECKMATE_BASE;
         }
     } else {
-        generateLegalMoves<Side, MoveGenerationPolicy::CAPTURES_ONLY,
+        generateLegalMoves<Side, MoveGenerationPolicy::COMPETITIVE_CAPTURES_ONLY,
                            RestrictionContextUpdatePolicy::LEAVE>(board, sink, restriction_context,
                                                                   ply);
     }
@@ -255,7 +255,7 @@ int search(SharedSearchContext&                  search_ctx,
         }
     }
 
-    generateLegalMoves<Side>(board, sink, restriction_context, ply);
+    generateLegalMoves<Side, MoveGenerationPolicy::COMPETITIVE_FULL>(board, sink, restriction_context, ply);
 
     // Check if side to move is mated.
     if (sink.count[ply] == 0) { // No legal moves.
@@ -277,7 +277,7 @@ int search(SharedSearchContext&                  search_ctx,
         return basicEval(board, Side);
     }
 
-    // Move ordering logic (MVV-LVA + TT Move).
+    // Move ordering logic (TT Move + Capture/Promotion scoring).
     Move tt_move = (stored_entry.key == zobrist_key && stored_entry.depth > 0) ? stored_entry.best_move : Move::none();
 
     auto scoreMove = [&](const Move& move) {

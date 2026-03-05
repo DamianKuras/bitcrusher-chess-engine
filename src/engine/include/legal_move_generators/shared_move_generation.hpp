@@ -9,9 +9,10 @@
 namespace bitcrusher {
 
 /// @brief Move generation policy representing which types of moves to produce.
-enum class MoveGenerationPolicy : bool {
-    FULL,
-    CAPTURES_ONLY,
+enum class MoveGenerationPolicy : uint8_t {
+    TESTS_FULL,               // Generates all legal moves (Perft standard)
+    COMPETITIVE_FULL,         // Skips Rook/Bishop non-capture underpromotions
+    COMPETITIVE_CAPTURES_ONLY // Skips Rook/Bishop capture underpromotions
 };
 
 /// @brief Creates moves given a target squares bitboard and an offset to calculate the source
@@ -26,11 +27,12 @@ enum class MoveGenerationPolicy : bool {
 /// @param move_to_target_squares Bitboard with bits set for each destination square.
 /// @param offset_to_create_target_square Offset subtracted from target squares to compute source
 /// squares.
-template <MoveType  MoveT,
-          PieceType MovedOrPromotedToPiece,
-          Color     SideToMove,
-          PieceType CapturedPiece = PieceType::NONE,
-          MoveSink  MoveSinkT>
+template <MoveType             MoveT,
+          PieceType            MovedOrPromotedToPiece,
+          Color                SideToMove,
+          PieceType            CapturedPiece = PieceType::NONE,
+          MoveSink             MoveSinkT,
+          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::TESTS_FULL>
 inline void createMovesFromBitboard(MoveSinkT& sink,
                                     uint64_t   move_to_target_squares,
                                     int        offset_to_create_target_square) {
@@ -40,12 +42,15 @@ inline void createMovesFromBitboard(MoveSinkT& sink,
 
             sink.template emplace<MoveT, PieceType::QUEEN, SideToMove, CapturedPiece>(
                 to_square - offset_to_create_target_square, to_square);
-            sink.template emplace<MoveT, PieceType::ROOK, SideToMove, CapturedPiece>(
-                to_square - offset_to_create_target_square, to_square);
-            sink.template emplace<MoveT, PieceType::BISHOP, SideToMove, CapturedPiece>(
-                to_square - offset_to_create_target_square, to_square);
             sink.template emplace<MoveT, PieceType::KNIGHT, SideToMove, CapturedPiece>(
                 to_square - offset_to_create_target_square, to_square);
+
+            if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL) {
+                sink.template emplace<MoveT, PieceType::ROOK, SideToMove, CapturedPiece>(
+                    to_square - offset_to_create_target_square, to_square);
+                sink.template emplace<MoveT, PieceType::BISHOP, SideToMove, CapturedPiece>(
+                    to_square - offset_to_create_target_square, to_square);
+            }
         }
     } else {
         while (move_to_target_squares != EMPTY_BITBOARD) {
@@ -66,11 +71,12 @@ inline void createMovesFromBitboard(MoveSinkT& sink,
 /// @param sink The move sink object that will store the created moves.
 /// @param move_to_target_squares Bitboard with bits set for each destination square.
 /// @param move_from The source square containing the piece for all generated moves.
-template <MoveType  MoveT,
-          PieceType MovedOrPromotedToPiece,
-          Color     SideToMove,
-          PieceType CapturedPiece = PieceType::NONE,
-          MoveSink  MoveSinkT>
+template <MoveType             MoveT,
+          PieceType            MovedOrPromotedToPiece,
+          Color                SideToMove,
+          PieceType            CapturedPiece = PieceType::NONE,
+          MoveSink             MoveSinkT,
+          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::TESTS_FULL>
 inline void
 createMovesFromBitboard(MoveSinkT& sink, uint64_t move_to_target_squares, Square move_from) {
 
@@ -80,12 +86,15 @@ createMovesFromBitboard(MoveSinkT& sink, uint64_t move_to_target_squares, Square
 
             sink.template emplace<MoveT, PieceType::QUEEN, SideToMove, CapturedPiece>(move_from,
                                                                                       to_square);
-            sink.template emplace<MoveT, PieceType::ROOK, SideToMove, CapturedPiece>(move_from,
-                                                                                     to_square);
-            sink.template emplace<MoveT, PieceType::BISHOP, SideToMove, CapturedPiece>(move_from,
-                                                                                       to_square);
             sink.template emplace<MoveT, PieceType::KNIGHT, SideToMove, CapturedPiece>(move_from,
                                                                                        to_square);
+
+            if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL) {
+                sink.template emplace<MoveT, PieceType::ROOK, SideToMove, CapturedPiece>(move_from,
+                                                                                         to_square);
+                sink.template emplace<MoveT, PieceType::BISHOP, SideToMove, CapturedPiece>(move_from,
+                                                                                           to_square);
+            }
         }
 
     } else {
@@ -97,26 +106,25 @@ createMovesFromBitboard(MoveSinkT& sink, uint64_t move_to_target_squares, Square
     }
 }
 
-/// @brief Generates capture moves ordered by MVV-LVA (Most Valuable Victim - Least Valuable
-/// Aggressor).
+/// @brief Generates capture moves.
 /// @tparam Side The Color of the side to move(Color::WHITE or Color::BLACK).
-/// @tparam MovedPiece The piece type performing the capture/captures.
+/// @tparam MovingPieceT Type of the piece moving.
 /// @tparam MoveSinkT Type of the move sink that receives generated moves.
 /// @param attacks_bitboard Bitboard containing all squares where legal captures can be made.
 /// @param sink The move sink object that will store the generated capture moves.
 /// @param board The current board state of the position.
 /// @param offset_to_create_target_square Offset value subtracted from target squares to encode the
 /// source square in the move representation.
-template <Color Side, PieceType MovedPiece, MoveSink MoveSinkT>
-void generateOrderedCapturesMVV_LVA(const uint64_t    attacks_bitboard,
-                                    MoveSinkT&        sink,
-                                    const BoardState& board,
-                                    int               offset_to_create_target_square) {
+template <Color Side, PieceType MovingPieceT, MoveSink MoveSinkT>
+void generateCaptures(const uint64_t    attacks_bitboard,
+                      MoveSinkT&        sink,
+                      const BoardState& board,
+                      int               offset_to_create_target_square) {
 
     auto process_piece = [&]<PieceType CapturedPiece>() {
         uint64_t piece_type_captures =
             attacks_bitboard & board.getBitboard<CapturedPiece, ! Side>();
-        createMovesFromBitboard<MoveType::CAPTURE, MovedPiece, Side, CapturedPiece>(
+        createMovesFromBitboard<MoveType::CAPTURE, MovingPieceT, Side, CapturedPiece>(
             sink, piece_type_captures, offset_to_create_target_square);
     };
     process_piece.template operator()<PieceType::QUEEN>();
@@ -126,26 +134,25 @@ void generateOrderedCapturesMVV_LVA(const uint64_t    attacks_bitboard,
     process_piece.template operator()<PieceType::PAWN>();
 }
 
-/// @brief Generates capture moves ordered by MVV-LVA (Most Valuable Victim - Least Valuable
-/// Aggressor). Produces captures for a single attacking piece.
+/// @brief Generates capture moves.
 /// @tparam Side The Color of the side to move(Color::WHITE or Color::BLACK).
-/// @tparam MovedPiece The piece type performing the capture/captures.
+/// @tparam MovingPieceT Type of the piece moving.
 /// @tparam MoveSinkT Type of the move sink that receives generated moves.
 /// @param attacks_bitboard Bitboard containing all squares where legal captures can be made.
 /// @param sink The move sink object that will store the generated capture moves.
 /// @param board The current board state of the position.
-/// @param sq The square where the attacking piece is located.
-template <Color Side, PieceType MovedPiece, MoveSink MoveSinkT>
-void generateOrderedCapturesMVV_LVA(const uint64_t    attacks_bitboard,
-                                    MoveSinkT&        sink,
-                                    const BoardState& board,
-                                    Square            sq) {
+/// @param move_from The source square of the capturing piece.
+template <Color Side, PieceType MovingPieceT, MoveSink MoveSinkT>
+void generateCaptures(const uint64_t    attacks_bitboard,
+                      MoveSinkT&        sink,
+                      const BoardState& board,
+                      Square            move_from) {
 
     auto process_piece = [&]<PieceType CapturedPiece>() {
         uint64_t piece_type_captures =
             attacks_bitboard & board.getBitboard<CapturedPiece, ! Side>();
-        createMovesFromBitboard<MoveType::CAPTURE, MovedPiece, Side, CapturedPiece>(
-            sink, piece_type_captures, sq);
+        createMovesFromBitboard<MoveType::CAPTURE, MovingPieceT, Side, CapturedPiece>(
+            sink, piece_type_captures, move_from);
     };
     process_piece.template operator()<PieceType::QUEEN>();
     process_piece.template operator()<PieceType::ROOK>();
@@ -154,25 +161,25 @@ void generateOrderedCapturesMVV_LVA(const uint64_t    attacks_bitboard,
     process_piece.template operator()<PieceType::PAWN>();
 }
 
-/// @brief Generates promotion capture moves ordered by MVV-LVA (Most Valuable Victim - Least
-/// Valuable Aggressor).
+/// @brief Generates promotion capture moves.
 /// @tparam Side The Color of the side to move(Color::WHITE or Color::BLACK).
+/// @tparam MoveGenerationP The policy determining if underpromotions should be skipped.
 /// @tparam MoveSinkT Type of the move sink that receives generated moves.
 /// @param attacks_bitboard Bitboard containing all squares where legal captures can be made.
 /// @param sink The move sink object that will store the generated capture moves.
 /// @param board The current board state of the position.
 /// @param offset_to_create_target_square Offset value subtracted from target squares to encode the
 /// source square in the move representation.
-template <Color Side, MoveSink MoveSinkT>
-void generateOrderedPromotionCaptures(const uint64_t    attacks_bitboard,
-                                      MoveSinkT&        sink,
-                                      const BoardState& board,
-                                      int               offset_to_create_target_square) {
+template <Color Side, MoveGenerationPolicy MoveGenerationP, MoveSink MoveSinkT>
+void generatePromotionCaptures(const uint64_t    attacks_bitboard,
+                               MoveSinkT&        sink,
+                               const BoardState& board,
+                               int               offset_to_create_target_square) {
 
     auto process_piece = [&]<PieceType CapturedPiece>() {
         uint64_t piece_type_captures =
             attacks_bitboard & board.getBitboard<CapturedPiece, ! Side>();
-        createMovesFromBitboard<MoveType::PROMOTION_CAPTURE, PieceType::PAWN, Side, CapturedPiece>(
+        createMovesFromBitboard<MoveType::PROMOTION_CAPTURE, PieceType::PAWN, Side, CapturedPiece, MoveSinkT, MoveGenerationP>(
             sink, piece_type_captures, offset_to_create_target_square);
     };
 
@@ -191,7 +198,7 @@ void generateOrderedPromotionCaptures(const uint64_t    attacks_bitboard,
 /// @return Bitboard with all squares the horizontal-vertical slider can attack.
 inline uint64_t getHorizontalVerticalAttacks(Square square, uint64_t occupancy) {
     occupancy &= PextBitboards::rook_masks[static_cast<int>(square)];
-    int index = _pext_u64(occupancy, PextBitboards::rook_masks[static_cast<int>(square)]);
+    int index = static_cast<int>(_pext_u64(occupancy, PextBitboards::rook_masks[static_cast<int>(square)]));
     return PextBitboards::attack_table[PextBitboards::rook_index[static_cast<int>(square)] + index];
 }
 
@@ -202,14 +209,13 @@ inline uint64_t getHorizontalVerticalAttacks(Square square, uint64_t occupancy) 
 /// @return Bitboard with all squares the diagonal slider can attack.
 inline uint64_t getDiagonalAttacks(Square square, uint64_t occupancy) {
     occupancy &= PextBitboards::bishop_masks[static_cast<int>(square)];
-    int index = _pext_u64(occupancy, PextBitboards::bishop_masks[static_cast<int>(square)]);
+    int index = static_cast<int>(_pext_u64(occupancy, PextBitboards::bishop_masks[static_cast<int>(square)]));
     return PextBitboards::attack_table[PextBitboards::bishop_index[static_cast<int>(square)] +
                                        index];
 }
 #endif
 
-/// @brief Generates Diagonal Sliding Piece Moves ordered by MVV-LVA (Most Valuable Victim - Least
-/// Valuable Aggressor).
+/// @brief Generates Diagonal Sliding Piece Moves.
 /// @tparam MovedPieceT Type of the moved slider piece (Bisop or Queen).
 /// @tparam Side Color of the sliding piece.
 /// @tparam MoveGenerationP Move generation policy MoveGenerationPolicy.
@@ -222,7 +228,7 @@ inline uint64_t getDiagonalAttacks(Square square, uint64_t occupancy) {
 /// source_squares. Importantly pinned pieces can only move along they pin mask.
 template <PieceType            MovedPieceT,
           Color                Side,
-          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
+          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::TESTS_FULL,
           MoveSink             MoveSinkT>
 void generateDiagonalSlidingPieceMoves(uint64_t          source_squares,
                                        const BoardState& board,
@@ -236,8 +242,8 @@ void generateDiagonalSlidingPieceMoves(uint64_t          source_squares,
         uint64_t piece_attacks{};
         piece_attacks = getDiagonalAttacks(piece_sq, board.getAllOccupancy()) & restriction_mask;
 
-        generateOrderedCapturesMVV_LVA<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
-        if constexpr (MoveGenerationP == MoveGenerationPolicy::FULL) {
+        generateCaptures<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
+        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL || MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
             uint64_t quiet_moves = piece_attacks & board.getEmptySquares();
             createMovesFromBitboard<MoveType::QUIET, MovedPieceT, Side>(sink, quiet_moves,
                                                                         piece_sq);
@@ -249,8 +255,8 @@ void generateDiagonalSlidingPieceMoves(uint64_t          source_squares,
         uint64_t piece_bb = convert::toBitboard(piece_sq);
         uint64_t piece_attacks =
             generateDiagonalAttacks(piece_bb, board.getAllOccupancy()) & restriction_mask;
-        generateOrderedCapturesMVV_LVA<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
-        if constexpr (MoveGenerationP == MoveGenerationPolicy::FULL) {
+        generateCaptures<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
+        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL || MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
             uint64_t quiet_moves = piece_attacks & board.getEmptySquares();
             createMovesFromBitboard<MoveType::QUIET, MovedPieceT, Side>(sink, quiet_moves,
                                                                         piece_sq);
@@ -259,8 +265,7 @@ void generateDiagonalSlidingPieceMoves(uint64_t          source_squares,
 #endif
 }
 
-/// @brief Generates Horizontal-Vertical Sliding Piece Moves ordered by MVV-LVA (Most Valuable
-/// Victim - Least Valuable Aggressor).
+/// @brief Generates Horizontal-Vertical Sliding Piece Moves.
 /// @tparam MovedPieceT Type of the moved slider piece (Rook or Queen).
 /// @tparam Side
 /// @tparam MoveGenerationP
@@ -271,7 +276,7 @@ void generateDiagonalSlidingPieceMoves(uint64_t          source_squares,
 /// @param restriction_mask
 template <PieceType            MovedPieceT,
           Color                Side,
-          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
+          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::TESTS_FULL,
           MoveSink             MoveSinkT>
 void generateHorizontalVerticalSlidingPieceMoves(uint64_t          source_squares,
                                                  const BoardState& board,
@@ -287,8 +292,8 @@ void generateHorizontalVerticalSlidingPieceMoves(uint64_t          source_square
         piece_attacks =
             getHorizontalVerticalAttacks(piece_sq, board.getAllOccupancy()) & restriction_mask;
 
-        generateOrderedCapturesMVV_LVA<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
-        if constexpr (MoveGenerationP == MoveGenerationPolicy::FULL) {
+        generateCaptures<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
+        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL || MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
             uint64_t quiet_moves = piece_attacks & board.getEmptySquares();
             createMovesFromBitboard<MoveType::QUIET, MovedPieceT, Side>(sink, quiet_moves,
                                                                         piece_sq);
@@ -300,9 +305,9 @@ void generateHorizontalVerticalSlidingPieceMoves(uint64_t          source_square
         uint64_t piece_bb = convert::toBitboard(piece_sq);
         uint64_t piece_attacks =
             generateHorizontalVerticalAttacks(piece_bb, board.getAllOccupancy()) & restriction_mask;
-        generateOrderedCapturesMVV_LVA<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
+        generateCaptures<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
 
-        if constexpr (MoveGenerationP == MoveGenerationPolicy::FULL) {
+        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL || MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
             uint64_t quiet_moves = piece_attacks & board.getEmptySquares();
             createMovesFromBitboard<MoveType::QUIET, MovedPieceT, Side>(sink, quiet_moves,
                                                                         piece_sq);

@@ -77,7 +77,7 @@ constexpr bool isValidEnPassant(const BoardState&         board,
 /// @param pawns_pinned_only_d Bitboard of pawns pinned only diagonally.
 /// @param restriction_context Contains check and pin informations.
 /// @param sink The move sink object that will store the generated capture moves.
-template <MoveSink MoveSinkT, Color Side, Direction PawnAttackDirection>
+template <MoveSink MoveSinkT, Color Side, Direction PawnAttackDirection, MoveGenerationPolicy MoveGenerationP>
     requires Horizontal<PawnAttackDirection>
 void generatePawnCaptureMoves(const BoardState&         board,
                               uint64_t                  pawns_not_pinned,
@@ -98,11 +98,11 @@ void generatePawnCaptureMoves(const BoardState&         board,
     uint64_t pawns_side_attacks_non_promotions =
         pawns_valid_side_attacks & NON_PROMOTION_RANKS_MASK;
 
-    generateOrderedCapturesMVV_LVA<Side, PieceType::PAWN>(
+    generateCaptures<Side, PieceType::PAWN>(
         pawns_side_attacks_non_promotions, sink, board,
         getPawnAttackOffset<Side, PawnAttackDirection>());
 
-    generateOrderedPromotionCaptures<Side>(pawns_side_attacks_promotions, sink, board,
+    generatePromotionCaptures<Side, MoveGenerationP>(pawns_side_attacks_promotions, sink, board,
                                            getPawnAttackOffset<Side, PawnAttackDirection>());
 
     if (board.hasEnPassant()) {
@@ -125,7 +125,7 @@ void generatePawnCaptureMoves(const BoardState&         board,
 /// @param restriction_context Contains check and pin informations.
 /// @param sink  The move sink object that will store the generated capture moves.
 template <Color                Side,
-          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
+          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::TESTS_FULL,
           MoveSink             MoveSinkT>
 void generateLegalPawnMoves(const BoardState&         board,
                             const RestrictionContext& restriction_context,
@@ -142,12 +142,12 @@ void generateLegalPawnMoves(const BoardState&         board,
                                          restriction_context.pinmask_diagonal;
 
     // Attacks and en_passant
-    generatePawnCaptureMoves<MoveSinkT, Side, Direction::LEFT>(
+    generatePawnCaptureMoves<MoveSinkT, Side, Direction::LEFT, MoveGenerationP>(
         board, pawns_not_pinned, pawns_pinned_only_d, restriction_context, sink);
-    generatePawnCaptureMoves<MoveSinkT, Side, Direction::RIGHT>(
+    generatePawnCaptureMoves<MoveSinkT, Side, Direction::RIGHT, MoveGenerationP>(
         board, pawns_not_pinned, pawns_pinned_only_d, restriction_context, sink);
 
-    if constexpr (MoveGenerationP == MoveGenerationPolicy::CAPTURES_ONLY) {
+    if constexpr (MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_CAPTURES_ONLY) {
         return;
     }
     // Single pawn pushes
@@ -160,7 +160,7 @@ void generateLegalPawnMoves(const BoardState&         board,
         sink, pawn_pushes_non_promotions, pawnPushOffset<Side>());
 
     uint64_t pawn_pushes_promotions = single_pawn_pushes & PROMOTION_RANKS_MASK;
-    createMovesFromBitboard<MoveType::PROMOTION, PieceType::PAWN, Side>(
+    createMovesFromBitboard<MoveType::PROMOTION, PieceType::PAWN, Side, PieceType::NONE, MoveSinkT, MoveGenerationP>(
         sink, pawn_pushes_promotions, pawnPushOffset<Side>());
 
     // Double pawn pushes

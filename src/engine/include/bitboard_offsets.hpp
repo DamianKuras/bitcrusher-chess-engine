@@ -38,7 +38,7 @@ template <auto... Directions>
             offset_delta += convert::toDelta(direction);
         } else {
             // Assume direction is of type RepeatedDirection
-            offset_delta += convert::toDelta(direction.dir) * direction.count;
+            offset_delta += convert::toDelta(direction.dir) * static_cast<int>(direction.count);
         }
     };
     (accumulate_offset(Directions), ...);
@@ -61,9 +61,9 @@ template <auto... Directions>
         } else {
             // Assume direction is of type RepeatedDirection
             if (direction.dir == Direction::LEFT) {
-                left_file_count += direction.count;
+                left_file_count += static_cast<int>(direction.count);
             } else if (direction.dir == Direction::RIGHT) {
-                right_file_count += direction.count;
+                right_file_count += static_cast<int>(direction.count);
             }
         }
     };

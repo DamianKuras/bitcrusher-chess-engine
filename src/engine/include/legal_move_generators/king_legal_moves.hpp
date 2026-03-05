@@ -37,7 +37,7 @@ const uint64_t SQUARES_BETWEEN_BLACK_QUEENSIDE_CASTLE_NOT_ATTACKED =
 /// @param restriction_context Contains check and pin informations.
 /// @param sink The move sink object that will store the generated capture moves.
 template <Color                Side,
-          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
+          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::TESTS_FULL,
           MoveSink             MoveSinkT>
 void generateLegalKingMoves(const BoardState&        board,
                             const RestrictionContext restriction_context,
@@ -47,8 +47,8 @@ void generateLegalKingMoves(const BoardState&        board,
     // Captures.
     const uint64_t king_attacks = generateKingAttacks(king_square) &
                                   (~generateSquaresAttackedXRayingOpponentKing<! Side>(board));
-    generateOrderedCapturesMVV_LVA<Side, PieceType::KING>(king_attacks, sink, board, king_square);
-    if constexpr (MoveGenerationP == MoveGenerationPolicy::CAPTURES_ONLY) {
+    generateCaptures<Side, PieceType::KING>(king_attacks, sink, board, king_square);
+    if constexpr (MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_CAPTURES_ONLY) {
         return;
     }
 

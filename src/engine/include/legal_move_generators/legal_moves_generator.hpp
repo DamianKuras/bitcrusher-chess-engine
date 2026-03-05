@@ -41,7 +41,7 @@ enum class RestrictionContextUpdatePolicy : bool {
 /// @param ply Current ply (half-move count) used by some move sinks for array-based storage.
 ///        Defaults to 0.
 template <Color                          Side,
-          MoveGenerationPolicy           MoveGenerationP = MoveGenerationPolicy::FULL,
+          MoveGenerationPolicy           MoveGenerationP = MoveGenerationPolicy::TESTS_FULL,
           RestrictionContextUpdatePolicy RestrictionContextUpdateP =
               RestrictionContextUpdatePolicy::UPDATE,
           MoveSink MoveSinkT>

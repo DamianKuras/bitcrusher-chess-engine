@@ -17,7 +17,7 @@ namespace bitcrusher {
 /// @param restriction_context Contains check and pin informations.
 /// @param sink The move sink object that will store the generated capture moves.
 template <Color                Side,
-          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::FULL,
+          MoveGenerationPolicy MoveGenerationP = MoveGenerationPolicy::TESTS_FULL,
           MoveSink             MoveSinkT>
 void generateLegalKnightMoves(const BoardState&         board,
                               const RestrictionContext& restriction_context,
@@ -30,13 +30,12 @@ void generateLegalKnightMoves(const BoardState&         board,
         uint64_t knight_attacks =
             generateKnightAttacks(knight_square) & restriction_context.checkmask;
         uint64_t knight_quiet_moves = knight_attacks & board.getEmptySquares();
-        generateOrderedCapturesMVV_LVA<Side, PieceType::KNIGHT>(knight_attacks, sink, board,
-                                                                knight_square);
-        if constexpr (MoveGenerationP == MoveGenerationPolicy::CAPTURES_ONLY) {
-            return;
+        generateCaptures<Side, PieceType::KNIGHT>(knight_attacks, sink, board,
+                                                  knight_square);
+        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL || MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
+            createMovesFromBitboard<MoveType::QUIET, PieceType::KNIGHT, Side>(sink, knight_quiet_moves,
+                                                                              knight_square);
         }
-        createMovesFromBitboard<MoveType::QUIET, PieceType::KNIGHT, Side>(sink, knight_quiet_moves,
-                                                                          knight_square);
     }
 }
 
