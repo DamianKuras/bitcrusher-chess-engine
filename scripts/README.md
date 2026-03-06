@@ -46,8 +46,16 @@ cd scripts
 - **`run_valgrind`**: Builds the engine in Release mode and runs it under Valgrind (memcheck/cachegrind). *Requires Linux or WSL.*
 - **`create_compile_commands`**: Generates a `compile_commands.json` file for integration with language servers (like clangd).
 
-### Engine Matches & Compliance
+### UCI Compliance
 - **`fastchess_compliance`**: Uses [fastchess](https://github.com/Disservin/fastchess) to run a UCI compliance check on the engine. Note: ensure `fastchess` is available in your system path.
-- **`fastchess_vs_sf`**: Uses [cutechess-cli](https://github.com/cutechess/cutechess) to run a quick 1-round match against Stockfish. Note: ensure `stockfish` and `cutechess-cli` are available in your system path.
+
+### Testing vs dev branch
 - **`run_elo_test_stc`**: Fast Short Time Control (STC) Elo testing script (10+0.1). Automatically clones the repository into isolated folders, compiles the engines, and runs a highly concurrent `fastchess` SPRT match. *Requires `data/pgn/8move_v3.pgn`.*
 - **`run_elo_test_ltc`**: Long Time Control (LTC) Elo testing script (60+0.6) for tournament-grade rating verification. *Requires `data/pgn/8move_v3.pgn`.*
+
+### Testing vs Stockfish
+- **`fastchess_vs_sf`**: Uses [cutechess-cli](http://cutechess.sourceforge.net/) to run a quick 1-round match against Stockfish. Note: ensure `stockfish` and `cutechess-cli` are available in your system path.
+
+
+### Elo Estimation
+- **`estimate_elo`**: Estimates the Elo rating of the engine using python script. Will download Stockfish and run a gauntlet against it to estimate the Elo rating of the engine. Requires Python 3 and fastchess in PATH.

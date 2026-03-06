@@ -12,6 +12,10 @@ Bitcrusher Chess Engine is a high-performance chess engine written in C++ that l
 - **UCI Compatibility:** Easily integrates with popular chess GUIs using the Universal Chess Interface (UCI) protocol.
 - **Cross-Platform:** Designed to compile and run on major operating systems including Windows, macOS, and Linux.
 
+## Estimated Strength
+
+Currently, Bitcrusher's estimated Elo rating is ~1921.
+
 ## Prerequisites
 
 - **Build System:** [premake5](https://premake.github.io/).

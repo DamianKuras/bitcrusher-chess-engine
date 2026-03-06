@@ -32,3 +32,5 @@ engine_log*
 # Documentation
 html/
 latex/
+
+scripts/elo_estimator_cache/
