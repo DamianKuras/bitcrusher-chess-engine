@@ -8,4 +8,9 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+if not exist "%CD%\bin\Release\Uci.exe" (
+    call "%~dp0build_engine_tournament.bat" >nul
+    if %errorlevel% neq 0 exit /b 1
+)
+
 fastchess --compliance "%CD%\bin\Release\Uci.exe"

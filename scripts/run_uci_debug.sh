@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
-# Navigate to repo root (one levels up from this script)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-cd "$REPO_ROOT" || exit 1
-
-# Generate Makefiles
-premake5 gmake --with-uci --with-bmi2
-
-# Build and run
-cd build &&
-make clean &&
-make Uci config=debug_x64 && 
-../bin/Debug/Uci
+set -e
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+[ -f "build/linux-uci-debug/CMakeCache.txt" ] || cmake --preset linux-uci-debug
+cmake --build --preset linux-uci-debug
+bin/Debug/Uci

@@ -1,0 +1,209 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+    "configurePresets": [
+        {
+            "name": "windows-base",
+            "hidden": true,
+            "generator": "Ninja Multi-Config",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        },
+        {
+            "name": "linux-base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux"
+            }
+        },
+        {
+            "name": "uci",
+            "displayName": "UCI (Windows, Release+Debug)",
+            "description": "UCI engine — no external dependencies, no vcpkg required",
+            "inherits": "windows-base",
+            "cacheVariables": {
+                "BITCRUSHER_BUILD_UCI": "ON",
+                "BITCRUSHER_WITH_BMI2": "ON"
+            }
+        },
+        {
+            "name": "tests",
+            "displayName": "Tests (Windows, Release+Debug)",
+            "description": "GoogleTest suite — requires VCPKG_ROOT to be set",
+            "inherits": "windows-base",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "BITCRUSHER_BUILD_TESTS": "ON",
+                "BITCRUSHER_WITH_BMI2": "ON"
+            }
+        },
+        {
+            "name": "tests-no-bmi2",
+            "displayName": "Tests without BMI2 (Windows)",
+            "description": "GoogleTest suite without BMI2 — requires VCPKG_ROOT to be set",
+            "inherits": "windows-base",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "BITCRUSHER_BUILD_TESTS": "ON",
+                "BITCRUSHER_WITH_BMI2": "OFF"
+            }
+        },
+        {
+            "name": "benchmarks",
+            "displayName": "Benchmarks (Windows, Release)",
+            "description": "Google Benchmark suite — requires VCPKG_ROOT to be set",
+            "inherits": "windows-base",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "BITCRUSHER_BUILD_BENCHMARKS": "ON",
+                "BITCRUSHER_WITH_BMI2": "ON"
+            }
+        },
+        {
+            "name": "linux-uci-release",
+            "displayName": "UCI Release (Linux)",
+            "inherits": "linux-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BITCRUSHER_BUILD_UCI": "ON",
+                "BITCRUSHER_WITH_BMI2": "ON"
+            }
+        },
+        {
+            "name": "linux-uci-debug",
+            "displayName": "UCI Debug (Linux)",
+            "inherits": "linux-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BITCRUSHER_BUILD_UCI": "ON",
+                "BITCRUSHER_WITH_BMI2": "ON"
+            }
+        },
+        {
+            "name": "linux-tests-release",
+            "displayName": "Tests Release (Linux)",
+            "inherits": "linux-base",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BITCRUSHER_BUILD_TESTS": "ON",
+                "BITCRUSHER_WITH_BMI2": "ON"
+            }
+        },
+        {
+            "name": "linux-tests-debug",
+            "displayName": "Tests Debug (Linux)",
+            "inherits": "linux-base",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "BITCRUSHER_BUILD_TESTS": "ON",
+                "BITCRUSHER_WITH_BMI2": "ON"
+            }
+        },
+        {
+            "name": "linux-tests-no-bmi2",
+            "displayName": "Tests without BMI2 (Linux)",
+            "inherits": "linux-base",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BITCRUSHER_BUILD_TESTS": "ON",
+                "BITCRUSHER_WITH_BMI2": "OFF"
+            }
+        },
+        {
+            "name": "linux-benchmarks-release",
+            "displayName": "Benchmarks Release (Linux)",
+            "inherits": "linux-base",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "BITCRUSHER_BUILD_BENCHMARKS": "ON",
+                "BITCRUSHER_WITH_BMI2": "ON"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "uci-release",
+            "displayName": "UCI Release",
+            "configurePreset": "uci",
+            "configuration": "Release",
+            "targets": ["Uci"]
+        },
+        {
+            "name": "uci-debug",
+            "displayName": "UCI Debug",
+            "configurePreset": "uci",
+            "configuration": "Debug",
+            "targets": ["Uci"]
+        },
+        {
+            "name": "tests-release",
+            "displayName": "Tests Release",
+            "configurePreset": "tests",
+            "configuration": "Release",
+            "targets": ["Tests"]
+        },
+        {
+            "name": "tests-debug",
+            "displayName": "Tests Debug",
+            "configurePreset": "tests",
+            "configuration": "Debug",
+            "targets": ["Tests"]
+        },
+        {
+            "name": "tests-no-bmi2-release",
+            "displayName": "Tests (no BMI2) Release",
+            "configurePreset": "tests-no-bmi2",
+            "configuration": "Release",
+            "targets": ["Tests"]
+        },
+        {
+            "name": "benchmarks-release",
+            "displayName": "Benchmarks Release",
+            "configurePreset": "benchmarks",
+            "configuration": "Release",
+            "targets": ["BenchmarkRunner"]
+        },
+        {
+            "name": "linux-uci-release",
+            "displayName": "UCI Release (Linux)",
+            "configurePreset": "linux-uci-release"
+        },
+        {
+            "name": "linux-uci-debug",
+            "displayName": "UCI Debug (Linux)",
+            "configurePreset": "linux-uci-debug"
+        },
+        {
+            "name": "linux-tests-release",
+            "displayName": "Tests Release (Linux)",
+            "configurePreset": "linux-tests-release"
+        },
+        {
+            "name": "linux-tests-debug",
+            "displayName": "Tests Debug (Linux)",
+            "configurePreset": "linux-tests-debug"
+        },
+        {
+            "name": "linux-tests-no-bmi2",
+            "displayName": "Tests (no BMI2) (Linux)",
+            "configurePreset": "linux-tests-no-bmi2"
+        },
+        {
+            "name": "linux-benchmarks-release",
+            "displayName": "Benchmarks Release (Linux)",
+            "configurePreset": "linux-benchmarks-release"
+        }
+    ]
+}

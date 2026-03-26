@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-cd "$REPO_ROOT" || exit 1
-
-premake5 --with-tests --with-benchmarks --with-uci export-compile-commands
+set -e
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+cmake -S . -B build/compile-commands -G Ninja \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DBITCRUSHER_BUILD_UCI=ON \
+    -DBITCRUSHER_BUILD_TESTS=ON \
+    -DBITCRUSHER_BUILD_BENCHMARKS=ON \
+    -DBITCRUSHER_WITH_BMI2=ON
+cp build/compile-commands/compile_commands.json compile_commands.json
+echo "compile_commands.json written to repo root."

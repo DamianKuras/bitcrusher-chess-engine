@@ -14,92 +14,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup premake5
-        uses: abel0b/setup-premake@v2.4
-        with:
-          version: "5.0.0-beta7"
-
-      - name: Install build dependencies with GCC 14
+      - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y software-properties-common
-          sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-          sudo apt-get update
-          sudo apt-get install -y build-essential gcc-14 g++-14
-
-          # Set GCC 14 as default
+          sudo apt-get install -y ninja-build gcc-14 g++-14 curl zip unzip tar
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
 
-      - name: Generate makefiles
-        run: premake5 gmake2 --with-tests
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: '544a4c5c297e60e4ac4a5a1810df66748d908869'
 
-      - name: Build tests
-        run: |
-          cd build
-          make Tests config=release_x64
+      - name: Configure
+        run: cmake --preset linux-tests-release
 
-      - name: Run fast tests
-        run: |
-          cd bin/Release
-          ./Tests --gtest_filter=-*slow
+      - name: Build
+        run: cmake --build --preset linux-tests-release
+
+      - name: Run tests
+        run: bin/Release/Tests --gtest_filter=-*slow
 
   windows:
     runs-on: windows-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup premake5
-        uses: abel0b/setup-premake@v2.4
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
         with:
-          version: "5.0.0-beta7"
+          vcpkgGitCommitId: '544a4c5c297e60e4ac4a5a1810df66748d908869'
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v2
+      - name: Configure
+        run: cmake --preset tests
 
-      - name: Generate Visual Studio solution
-        run: premake5 vs2022 --with-tests
-
-      - name: Build with MSBuild
-        run: |
-          cd build
-          msbuild Tests.vcxproj /property:Configuration=Release /property:Platform=x64
+      - name: Build
+        run: cmake --build --preset tests-release
 
       - name: Run tests
-        run: |
-          cd bin/Release
-          ./Tests.exe --gtest_filter=-*slow
-
-  # macos:
-  #   runs-on: macos-15
-
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
-
-  #     - name: Use Xcode 16
-  #       run: sudo xcode-select -s /Applications/Xcode_16.0.app
-
-  #     - name: Setup premake5
-  #       uses: abel0b/setup-premake@v2.4
-  #       with:
-  #         version: "5.0.0-beta7"
-
-  #     - name: Generate Xcode project
-  #       run: premake5 xcode4 --with-tests
-
-  #     - name: Build with Xcode
-  #       run: |
-  #         cd build
-  #         xcodebuild \
-  #           -project Tests.xcodeproj \
-  #           -configuration Release \
-  #           -scheme Tests \
-  #           -sdk macosx \
-  #           build
-
-  #     - name: Run tests
-  #       run: |
-  #         cd bin/Release
-  #         ./Tests --gtest_filter=-*slow
+        run: bin\Release\Tests.exe --gtest_filter=-*slow

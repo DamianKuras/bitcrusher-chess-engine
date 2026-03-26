@@ -1,22 +1,8 @@
 @echo off
+call "%~dp0_setup_env.bat" || exit /b 1
 cd /d "%~dp0.."
-
-REM Generate Visual Studio Solution
-premake5 vs2022 --with-uci --with-bmi2
-
-REM Find MSBuild
-for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe`) do (
-  set MSBUILD="%%i"
-)
-if not defined MSBUILD (
-    echo Error: Could not find MSBuild.exe.
-    exit /b 1
-)
-
-REM Build and run
-cd build
-%MSBUILD% BitcrusherChessEngine.sln /p:Configuration=Release /p:Platform=x64 /t:Clean
-%MSBUILD% BitcrusherChessEngine.sln /p:Configuration=Release /p:Platform=x64
-cd ..
+if not exist "build\uci\CMakeCache.txt" cmake --preset uci
+if %errorlevel% neq 0 exit /b 1
+cmake --build --preset uci-release
+if %errorlevel% neq 0 exit /b 1
 bin\Release\Uci.exe < uci_commands.txt
-

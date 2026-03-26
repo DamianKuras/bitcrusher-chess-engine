@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
-# Navigate to repo root (one levels up from this script)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-cd "$REPO_ROOT" || exit 1
-
-# Generate Makefiles
-premake5 gmake --with-uci --with-bmi2
-
-# Build and run
-cd build &&
-make clean &&
-make Uci config=release_x64 && 
-# valgrind --tool=memcheck --track-origins=yes ../bin/Release/Uci
-valgrind --tool=cachegrind --cache-sim=yes ../bin/Release/Uci
+set -e
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+[ -f "build/linux-uci-release/CMakeCache.txt" ] || cmake --preset linux-uci-release
+cmake --build --preset linux-uci-release
+valgrind --tool=cachegrind --cache-sim=yes bin/Release/Uci

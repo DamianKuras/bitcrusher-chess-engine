@@ -1,22 +1,10 @@
 @echo off
+call "%~dp0_setup_env.bat" || exit /b 1
 cd /d "%~dp0.."
-
-REM Generate Visual Studio Solution
-premake5 vs2022 --with-benchmarks --with-bmi2
-
-REM Find MSBuild
-for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe`) do (
-  set MSBUILD="%%i"
-)
-if not defined MSBUILD (
-    echo Error: Could not find MSBuild.exe.
-    exit /b 1
-)
-
-REM Build and run
-cd build
-%MSBUILD% BitcrusherChessEngine.sln /p:Configuration=Release /p:Platform=x64 /t:Clean
-%MSBUILD% BitcrusherChessEngine.sln /p:Configuration=Release /p:Platform=x64
-cd ..
-bin\Release\BenchmarkRunner.exe --benchmark_out_format=json --benchmark_out=benchmarks\results\result.json --benchmark_report_aggregates_only=true --benchmark_min_warmup_time=0.2
-
+if not exist "build\benchmarks\CMakeCache.txt" cmake --preset benchmarks
+if %errorlevel% neq 0 exit /b 1
+cmake --build --preset benchmarks-release
+if %errorlevel% neq 0 exit /b 1
+if not exist benchmarks\results mkdir benchmarks\results
+cd /d "%~dp0..\benchmarks"
+..\bin\Release\BenchmarkRunner.exe --benchmark_out_format=json --benchmark_out=results\result.json --benchmark_report_aggregates_only=true --benchmark_min_warmup_time=0.2 %*

@@ -1,14 +1,7 @@
 #!/usr/bin/env bash
-# Navigate to repo root (one levels up from this script)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-cd "$REPO_ROOT" || exit 1
-
-# Generate Makefiles
-premake5 gmake --with-tests --with-bmi2
-
-# Build and run
-cd build &&
-make clean &&
-make Tests config=debug_x64 && 
-../bin/Debug/Tests --gtest_filter=-*slow
+set -e
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+[ -f "build/linux-tests-debug/CMakeCache.txt" ] || cmake --preset linux-tests-debug
+cmake --build --preset linux-tests-debug
+bin/Debug/Tests --gtest_filter=-*slow
