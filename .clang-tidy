@@ -22,6 +22,7 @@ Checks: >
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cppcoreguidelines-owning-memory,
   -llvm-include-order,
+  -llvm-header-guard,
   -misc-use-anonymous-namespace,
   -misc-no-recursion,
   -readability-redundant-inline-specifier
