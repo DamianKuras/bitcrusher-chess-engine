@@ -12,6 +12,7 @@
 #include "transposition_table.hpp"
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <stop_token>
 #include <string>
@@ -63,11 +64,13 @@ inline bool shouldStopSearching(const std::stop_token& st, SharedSearchContext& 
         return true;
     }
 
-    if ((search_ctx.nodes_searched.load() & NODE_CHECK_INTERVAL) == 0 && !search_ctx.is_pondering.load()) {
+    if ((search_ctx.nodes_searched.load() & NODE_CHECK_INTERVAL) == 0 &&
+        ! search_ctx.is_pondering.load()) {
         auto now = std::chrono::steady_clock::now();
-        auto current_time_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        auto current_time_ms =
+            std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
         int max_time = search_ctx.max_search_time_ms.load();
-        
+
         if (max_time > 0 && (current_time_ms - search_ctx.time_limit_start_ms.load()) > max_time) {
             return true;
         }
@@ -75,16 +78,33 @@ inline bool shouldStopSearching(const std::stop_token& st, SharedSearchContext& 
     return false;
 }
 
+constexpr int mvvLvaPieceValue(PieceType pt) noexcept {
+    switch (pt) {
+    case PieceType::QUEEN:
+        return 900;
+    case PieceType::ROOK:
+        return 500;
+    case PieceType::BISHOP:
+        return 330;
+    case PieceType::KNIGHT:
+        return 320;
+    case PieceType::PAWN:
+        return 100;
+    default:
+        return 0;
+    }
+}
+
 template <Color Side, MoveSink MoveSinkT>
-int quiescenceSearch(SharedSearchContext&                  search_ctx,
-                     BoardState&                           board,
-                     MoveProcessor&                        move_processor,
-                     RestrictionContext&                   restriction_context,
-                     int                                   alpha,
-                     int                                   beta,
-                     const std::stop_token&                st,
-                     MoveSinkT&                            sink,
-                     int                                   ply) {
+int quiescenceSearch(SharedSearchContext&   search_ctx,
+                     BoardState&            board,
+                     MoveProcessor&         move_processor,
+                     RestrictionContext&    restriction_context,
+                     int                    alpha,
+                     int                    beta,
+                     const std::stop_token& st,
+                     MoveSinkT&             sink,
+                     int                    ply) {
     if (move_processor.hasCurrentPositionRepeated3Times()) {
         return 0;
     }
@@ -97,8 +117,9 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
 
     // Generate appropriate moves based on check state.
     if (restriction_context.check_count > 0) { // In check.
-        generateLegalMoves<Side, MoveGenerationPolicy::COMPETITIVE_FULL, RestrictionContextUpdatePolicy::LEAVE>(
-            board, sink, restriction_context, ply);
+        generateLegalMoves<Side, MoveGenerationPolicy::COMPETITIVE_FULL,
+                           RestrictionContextUpdatePolicy::LEAVE>(board, sink, restriction_context,
+                                                                  ply);
         if (sink.count[ply] == 0) { // No legal moves and in check.
             return -CHECKMATE_BASE;
         }
@@ -108,7 +129,7 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
                                                                   ply);
     }
 
-    int static_eval = basicEval(board, Side);
+    int static_eval = eval(board, Side);
 
     if (sink.count[ply] == 0) { // No legal Captures or max depth.
         return static_eval;
@@ -124,17 +145,8 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
 
     auto scoreMove = [&](const Move& move) {
         if (move.isCapture()) {
-            auto pieceValue = [](PieceType pt) {
-                switch (pt) {
-                    case PieceType::QUEEN: return 900;
-                    case PieceType::ROOK: return 500;
-                    case PieceType::BISHOP: return 330;
-                    case PieceType::KNIGHT: return 320;
-                    case PieceType::PAWN: return 100;
-                    default: return 0;
-                }
-            };
-            return 10 * pieceValue(move.capturedPiece()) - pieceValue(move.movingPiece()) + 10000;
+            return 10 * mvvLvaPieceValue(move.capturedPiece()) -
+                   mvvLvaPieceValue(move.movingPiece()) + 10000;
         }
         if (move.isPromotion()) {
             return 900 + 5000;
@@ -146,7 +158,7 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
     for (int i = 0; i < sink.count[ply]; ++i) {
         move_scores[i] = scoreMove(sink.moves[ply][i]);
     }
-    
+
     for (int i = 0; i < sink.count[ply] - 1; ++i) {
         int best_idx = i;
         for (int j = i + 1; j < sink.count[ply]; ++j) {
@@ -165,8 +177,9 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
         assert((board.getOwnOccupancy<Side>() ^ board.getOpponentOccupancy<Side>()) ==
                board.getAllOccupancy());
         // -Search because the opponent's best score becomes your worst.
-        int eval = -quiescenceSearch<! Side, MoveSinkT>(
-            search_ctx, board, move_processor, restriction_context, -beta, -alpha, st, sink, ply + 1);
+        int eval = -quiescenceSearch<! Side, MoveSinkT>(search_ctx, board, move_processor,
+                                                        restriction_context, -beta, -alpha, st,
+                                                        sink, ply + 1);
 
         move_processor.undoMove(board, move);
         if (abs(eval) == SEARCH_INTERRUPTED) {
@@ -186,18 +199,18 @@ int quiescenceSearch(SharedSearchContext&                  search_ctx,
 /// @brief Alpha is minimum score that the maximizing player is assured of.
 /// Beta is maximum score that the minimizing player is assured of.
 template <Color Side, bool UseQuiescenceSearch = true, MoveSink MoveSinkT>
-int search(SharedSearchContext&                  search_ctx,
-           BoardState&                           board,
-           MoveProcessor&                        move_processor,
-           const SearchParameters&               search_parameters,
-           RestrictionContext&                   restriction_context,
-           int                                   depth,
-           int                                   alpha,
-           int                                   beta,
-           std::stop_token&                      st,
-           MoveSinkT&                            sink,
-           int                                   ply       = 0,
-           bool                                  exclusive = false) {
+int search(SharedSearchContext&    search_ctx,
+           BoardState&             board,
+           MoveProcessor&          move_processor,
+           const SearchParameters& search_parameters,
+           RestrictionContext&     restriction_context,
+           int                     depth,
+           int                     alpha,
+           int                     beta,
+           std::stop_token&        st,
+           MoveSinkT&              sink,
+           int                     ply       = 0,
+           bool                    exclusive = false) {
     int alpha_orig = alpha;
     if (move_processor.hasCurrentPositionRepeated3Times()) {
         return 0; // Draw.
@@ -254,7 +267,8 @@ int search(SharedSearchContext&                  search_ctx,
         }
     }
 
-    generateLegalMoves<Side, MoveGenerationPolicy::COMPETITIVE_FULL>(board, sink, restriction_context, ply);
+    generateLegalMoves<Side, MoveGenerationPolicy::COMPETITIVE_FULL>(board, sink,
+                                                                     restriction_context, ply);
 
     // Check if side to move is mated.
     if (sink.count[ply] == 0) { // No legal moves.
@@ -270,29 +284,23 @@ int search(SharedSearchContext&                  search_ctx,
                        search_ctx.nodes_searched >= search_parameters.max_nodes)) {
         if constexpr (UseQuiescenceSearch) {
             return quiescenceSearch<Side, MoveSinkT>(search_ctx, board, move_processor,
-                                                     restriction_context, -beta, -alpha, st,
-                                                     sink, ply + 1);
+                                                     restriction_context, -beta, -alpha, st, sink,
+                                                     ply + 1);
         }
-        return basicEval(board, Side);
+        return eval(board, Side);
     }
 
     // Move ordering logic (TT Move + Capture/Promotion scoring).
-    Move tt_move = (stored_entry.key == zobrist_key && stored_entry.depth > 0) ? stored_entry.best_move : Move::none();
+    Move tt_move = (stored_entry.key == zobrist_key && stored_entry.depth > 0)
+                       ? stored_entry.best_move
+                       : Move::none();
 
     auto scoreMove = [&](const Move& move) {
-        if (move == tt_move) return 1000000;
+        if (move == tt_move)
+            return 1000000;
         if (move.isCapture()) {
-            auto pieceValue = [](PieceType pt) {
-                switch (pt) {
-                    case PieceType::QUEEN: return 900;
-                    case PieceType::ROOK: return 500;
-                    case PieceType::BISHOP: return 330;
-                    case PieceType::KNIGHT: return 320;
-                    case PieceType::PAWN: return 100;
-                    default: return 0;
-                }
-            };
-            return 10 * pieceValue(move.capturedPiece()) - pieceValue(move.movingPiece()) + 10000;
+            return 10 * mvvLvaPieceValue(move.capturedPiece()) -
+                   mvvLvaPieceValue(move.movingPiece()) + 10000;
         }
         if (move.isPromotion()) {
             return 900 + 5000; // rough value
@@ -304,7 +312,7 @@ int search(SharedSearchContext&                  search_ctx,
     for (int i = 0; i < sink.count[ply]; ++i) {
         move_scores[i] = scoreMove(sink.moves[ply][i]);
     }
-    
+
     for (int i = 0; i < sink.count[ply] - 1; ++i) {
         int best_idx = i;
         for (int j = i + 1; j < sink.count[ply]; ++j) {
@@ -341,11 +349,11 @@ int search(SharedSearchContext&                  search_ctx,
             }
 
             move_processor.applyMove(board, move);
+            search_ctx.tt.prefetch(board.getZobristHash());
             bool exclusive = iteration == 0 && i != 0;
             int  eval      = -search<! Side, UseQuiescenceSearch>(
                 search_ctx, board, move_processor, search_parameters, restriction_context,
-                depth - 1, -beta, -alpha, st, sink, ply + 1,
-                exclusive);
+                depth - 1, -beta, -alpha, st, sink, ply + 1, exclusive);
             move_processor.undoMove(board, move);
             if (abs(eval) == SEARCH_INTERRUPTED) {
                 return SEARCH_INTERRUPTED;
