@@ -2,7 +2,9 @@
 #include "search.hpp"
 #include "search_manager.hpp"
 #include <gtest/gtest.h>
+#include <sstream>
 #include <string>
+#include <unordered_set>
 
 using bitcrusher::Move;
 using bitcrusher::SearchManager;
@@ -233,4 +235,47 @@ TEST(searchTests, SearchOutputsLegalFallbackMoveWhenAbortedInstantly) {
          best_move == "c2c3" || best_move == "c2c4" || best_move == "f2f3" || best_move == "f2f4" ||
          best_move == "g2g3" || best_move == "g2g4" || best_move == "h2h3" || best_move == "h2h4");
     EXPECT_TRUE(is_legal);
+}
+
+TEST(searchTests, PrincipalVariationShouldBeCycleFree) {
+    // Exact position from SPRT where "Warning; Illegal pv move c5c6 from Bitcrusher_dev"
+    // appeared at depth 21+. TT entries for the K+R vs K mating sequence cycled back,
+    // causing getPrincipalVariation to emit an illegal move.
+    // FEN derived from: startpos + 162 game moves (python-chess verified).
+    SearchManager search_manager{};
+    std::string   pv;
+
+    search_manager.setOnSearchFinished(
+        [&search_manager, &pv]() { pv = search_manager.getPrincipalVariation(80); });
+
+    const std::string_view fen = "1k6/8/2RK4/8/8/8/8/8 w - - 19 92";
+    search_manager.setPos(fen);
+
+    bitcrusher::SearchParameters params;
+    params.max_ply               = 80; // depth 40; bug appeared at depth 21+
+    params.use_quiescence_search = false;
+
+    search_manager.startSearch<bitcrusher::FastMoveSink>(params);
+    search_manager.waitUntilSearchFinished();
+
+    ASSERT_FALSE(pv.empty());
+
+    // Walk PV moves and verify no position hash appears twice.
+    bitcrusher::BoardState    pv_board;
+    bitcrusher::parseFEN(fen, pv_board);
+    bitcrusher::MoveProcessor    pv_mp;
+    std::unordered_set<uint64_t> visited;
+    visited.insert(pv_board.getZobristHash());
+
+    std::istringstream iss(pv);
+    std::string        move_uci;
+    while (iss >> move_uci) {
+        bitcrusher::Move move = bitcrusher::moveFromUci(move_uci, pv_board);
+        pv_mp.applyMove(pv_board, move);
+        const bool is_new = visited.insert(pv_board.getZobristHash()).second;
+        EXPECT_TRUE(is_new) << "PV contains a cycle at move: " << move_uci;
+        if (!is_new) {
+            break;
+        }
+    }
 }

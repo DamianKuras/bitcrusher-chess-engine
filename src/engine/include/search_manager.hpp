@@ -15,6 +15,7 @@
 #include <chrono>
 #include <climits>
 #include <condition_variable>
+#include <constants.hpp>
 #include <cstdint>
 #include <functional>
 #include <mutex>
@@ -84,8 +85,8 @@ public:
             search_ctx_.time_limit_start_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                                   start_time_.time_since_epoch())
                                                   .count();
-            stop_source_   = std::stop_source();
-            search_active_ = true;
+            stop_source_                    = std::stop_source();
+            search_active_                  = true;
             // Calculate move time allocation.
             if (board_.isWhiteMove()) {
                 search_time_ms_ = calculateMoveTimeAllocation<Color::WHITE>(search_parameters);
@@ -176,6 +177,10 @@ public:
         MoveProcessor mp;
 
         mp.applyMove(pv_board, best_move_);
+        uint64_t visited[MAX_DEPTH];
+        int      visited_count        = 0;
+        visited[visited_count++]      = board_.getZobristHash();
+        visited[visited_count++]      = pv_board.getZobristHash();
         int max_remaining_moves_in_pv = depth - 1;
         while (max_remaining_moves_in_pv-- > 0) {
             uint64_t hash            = pv_board.getZobristHash();
@@ -186,8 +191,13 @@ public:
                 break;
             }
 
-            ans += " " + toUci(best_move_entry.best_move);
             mp.applyMove(pv_board, best_move_entry.best_move);
+            uint64_t new_hash = pv_board.getZobristHash();
+            if (std::find(visited, visited + visited_count, new_hash) != visited + visited_count) {
+                break; // Cycle detected — don't add this move to the PV.
+            }
+            visited[visited_count++] = new_hash;
+            ans += " " + toUci(best_move_entry.best_move);
         }
         return ans;
     }
