@@ -54,7 +54,13 @@ scripts/run_tests.sh
 
 ### Code Quality & Maintenance
 - **`format_code`**: Runs `clang-format` on all C++ source and header files in the repository.
-- **`lint_code`**: Runs `clang-tidy` on all C++ source and header files (generates `compile_commands.json` if missing).
+- **`lint_code`**: Runs `clang-tidy` on all C++ source and header files (generates `compile_commands.json` if missing). Accepts an optional file path to lint a single file:
+  ```cmd
+  scripts\lint_code.bat src\uci\uci.cpp
+  ```
+  ```bash
+  scripts/lint_code.sh src/uci/uci.cpp
+  ```
 - **`clean_workspace`**: Completely removes the `bin/`, `obj/`, and `build/` directories.
 - **`create_compile_commands`**: Generates a `compile_commands.json` file for integration with language servers (like clangd).
 
