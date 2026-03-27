@@ -246,7 +246,7 @@ inline constinit auto eg_table       = buildPhaseSpecificPieceSquareTable(EndGam
 /// @param board The current board state of the evaluated position.
 /// @param side  The Color of the side evaluation is relative for(Color::WHITE or Color::BLACK).
 /// @return Centipawn evaluation of the position.
-[[nodiscard]] inline int basicEval(const BoardState& board, Color side) noexcept {
+[[nodiscard]] inline int eval(const BoardState& board, Color side) noexcept {
     int middle_game_white = 0, middle_game_black = 0;
     int end_game_white = 0, end_game_black = 0;
     int game_phase = 0;
