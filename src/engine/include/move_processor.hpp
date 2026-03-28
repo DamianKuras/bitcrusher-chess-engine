@@ -6,13 +6,12 @@
 #include "move.hpp"
 #include <array>
 #include <cassert>
+#include <constants.hpp>
 #include <cstdint>
 
 namespace bitcrusher {
 
 namespace internal {
-
-const int MAX_DEPTH = 500;
 
 struct MoveUndo {
     CastlingRights prev_castling_rights{};
@@ -183,9 +182,9 @@ undoMove(BoardState& board, const Move& move, const internal::MoveUndo& undo) no
 } // namespace internal
 
 class MoveProcessor {
-    std::array<internal::MoveUndo, internal::MAX_DEPTH> undo_history_{};
-    int                                                 undo_history_pointer_{0};
-    bool                                                has_repeated_3_times_{false};
+    std::array<internal::MoveUndo, MAX_DEPTH> undo_history_{};
+    int                                       undo_history_pointer_{0};
+    bool                                      has_repeated_3_times_{false};
 
 public:
     void applyMove(BoardState& board, const Move& move) {

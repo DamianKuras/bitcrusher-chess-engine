@@ -15,6 +15,7 @@
 #include <chrono>
 #include <climits>
 #include <condition_variable>
+#include <constants.hpp>
 #include <cstdint>
 #include <functional>
 #include <mutex>
@@ -66,7 +67,8 @@ public:
         }
     }
 
-    template <MoveSink MoveSinkT> void startSearch(const SearchParameters& search_parameters) {
+    template <MoveSink MoveSinkT, bool PauseAfterRootSort = false>
+    void startSearch(const SearchParameters& search_parameters) {
 
         if (search_active_.load()) {
             stopSearch();
@@ -76,15 +78,15 @@ public:
         // Update search parameters and state with lock.
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            search_options_            = search_parameters;
-            start_time_                = std::chrono::steady_clock::now();
-            search_ctx_.nodes_searched = 0;
-            search_ctx_.is_pondering   = search_parameters.ponder;
+            search_options_                 = search_parameters;
+            start_time_                     = std::chrono::steady_clock::now();
+            search_ctx_.nodes_searched      = 0;
+            search_ctx_.is_pondering        = search_parameters.ponder;
             search_ctx_.time_limit_start_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                                   start_time_.time_since_epoch())
                                                   .count();
-            stop_source_   = std::stop_source();
-            search_active_ = true;
+            stop_source_                    = std::stop_source();
+            search_active_                  = true;
             // Calculate move time allocation.
             if (board_.isWhiteMove()) {
                 search_time_ms_ = calculateMoveTimeAllocation<Color::WHITE>(search_parameters);
@@ -94,6 +96,16 @@ public:
             }
             search_ctx_.max_search_time_ms = search_time_ms_;
         }
+        search_fn_ = [this](SearchParameters opts, BoardState board, MoveProcessor mp,
+                            std::stop_token st, SharedSearchContext& ctx) {
+            if (opts.use_quiescence_search) {
+                performSearch<FastMoveSink, true, true, PauseAfterRootSort>(opts, board, mp, st,
+                                                                            ctx);
+            } else {
+                performSearch<FastMoveSink, true, false, PauseAfterRootSort>(opts, board, mp, st,
+                                                                             ctx);
+            }
+        };
         condition_.notify_all(); // Notifies main and all worker threads.
     }
 
@@ -165,6 +177,10 @@ public:
         MoveProcessor mp;
 
         mp.applyMove(pv_board, best_move_);
+        uint64_t visited[MAX_DEPTH];
+        int      visited_count        = 0;
+        visited[visited_count++]      = board_.getZobristHash();
+        visited[visited_count++]      = pv_board.getZobristHash();
         int max_remaining_moves_in_pv = depth - 1;
         while (max_remaining_moves_in_pv-- > 0) {
             uint64_t hash            = pv_board.getZobristHash();
@@ -175,8 +191,13 @@ public:
                 break;
             }
 
-            ans += " " + toUci(best_move_entry.best_move);
             mp.applyMove(pv_board, best_move_entry.best_move);
+            uint64_t new_hash = pv_board.getZobristHash();
+            if (std::find(visited, visited + visited_count, new_hash) != visited + visited_count) {
+                break; // Cycle detected — don't add this move to the PV.
+            }
+            visited[visited_count++] = new_hash;
+            ans += " " + toUci(best_move_entry.best_move);
         }
         return ans;
     }
@@ -230,12 +251,12 @@ public:
     void ponderHit() {
         std::lock_guard<std::mutex> lock(mutex_);
         if (search_ctx_.is_pondering.load()) {
-            search_ctx_.is_pondering = false;
-            start_time_ = std::chrono::steady_clock::now();
+            search_ctx_.is_pondering        = false;
+            start_time_                     = std::chrono::steady_clock::now();
             search_ctx_.time_limit_start_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                                   start_time_.time_since_epoch())
                                                   .count();
-                                                  
+
             if (board_.isWhiteMove()) {
                 search_time_ms_ = calculateMoveTimeAllocation<Color::WHITE>(search_options_);
             } else {
@@ -266,18 +287,13 @@ private:
             int                  thread_search_time_ms = search_time_ms_;
             SharedSearchContext& ctx                   = search_ctx_;
             lock.unlock();
-            if (local_options.use_quiescence_search) {
-                performSearch<FastMoveSink, true, true>(
-                    local_options, thread_board, thread_move_processor, stop_token, ctx);
-            } else {
-                performSearch<FastMoveSink, true, false>(
-                    local_options, thread_board, thread_move_processor, stop_token, ctx);
-            }
+            search_fn_(local_options, thread_board, thread_move_processor, stop_token, ctx);
 
             {
                 std::unique_lock<std::mutex> wait_lock(mutex_);
                 condition_.wait(wait_lock, [this, stop_token] {
-                    return !search_ctx_.is_pondering.load() || shutdown_ || stop_token.stop_requested();
+                    return ! search_ctx_.is_pondering.load() || shutdown_ ||
+                           stop_token.stop_requested();
                 });
             }
 
@@ -341,7 +357,10 @@ private:
         workers_shutdown_ = false; // Reset for future searches.
     }
 
-    template <MoveSink MoveSinkT, bool IsMainThread = false, bool UseQuiescenceSearch = true>
+    template <MoveSink MoveSinkT,
+              bool     IsMainThread        = false,
+              bool     UseQuiescenceSearch = true,
+              bool     PauseAfterRootSort  = false>
     void performSearch(const SearchParameters& search_parameters,
                        BoardState              board,
                        MoveProcessor           move_processor,
@@ -349,26 +368,28 @@ private:
                        SharedSearchContext&    search_ctx) {
         FastMoveSink       sink;
         RestrictionContext restriction_context;
+        if constexpr (IsMainThread) {
+            search_ctx.root_best_move = Move::none();
+        }
         for (int ply = 1; ply <= search_parameters.max_ply; ply++) {
 
             int score{0};
             if (board.isWhiteMove()) {
-                score = bitcrusher::search<Color::WHITE, UseQuiescenceSearch>(
+                score = bitcrusher::search<Color::WHITE, UseQuiescenceSearch, IsMainThread,
+                                           PauseAfterRootSort>(
                     search_ctx, board, move_processor, search_parameters, restriction_context, ply,
                     -CHECKMATE_BASE, CHECKMATE_BASE, st, sink);
             } else {
-                score = bitcrusher::search<Color::BLACK, UseQuiescenceSearch>(
+                score = bitcrusher::search<Color::BLACK, UseQuiescenceSearch, IsMainThread,
+                                           PauseAfterRootSort>(
                     search_ctx, board, move_processor, search_parameters, restriction_context, ply,
                     -CHECKMATE_BASE, CHECKMATE_BASE, st, sink);
             }
             if constexpr (IsMainThread) {
+                best_move_ = search_ctx.root_best_move;
                 if (abs(score) != SEARCH_INTERRUPTED) {
                     assert(abs(score) != ON_EVALUATION);
-                    TranspositionTableEntry root_move_entry =
-                        search_ctx_.tt.getEntry(board.getZobristHash());
-                    assert(root_move_entry.value != ON_EVALUATION);
-                    best_move_ = root_move_entry.best_move;
-                    score_     = score;
+                    score_ = score;
                     if ((ply % 2 == 0) && onDepthCompleted_) {
                         onDepthCompleted_(ply / 2);
                     }
@@ -409,6 +430,9 @@ private:
     BoardState    board_{};
     MoveProcessor move_processor_;
 
+    std::function<void(
+        SearchParameters, BoardState, MoveProcessor, std::stop_token, SharedSearchContext&)>
+                             search_fn_;
     std::function<void()>    onSearchFinished_;
     std::function<void(int)> onDepthCompleted_;
 

@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <stop_token>
 #include <string>
+#include <thread>
 #include <unordered_set>
 #include <vector>
 
@@ -53,6 +54,11 @@ struct SharedSearchContext {
     std::atomic<int64_t> time_limit_start_ms{0};
     std::atomic<int>     max_search_time_ms{0};
 
+    // Best move found at the root so far. Written only by the main thread
+    // (IsRoot=true). Guarantees a legal move is always available even if
+    // iterative deepening is interrupted before depth 1 completes.
+    Move root_best_move{Move::none()};
+
 #ifdef DEBUG
     std::atomic<int> beta_cutoffs{0};
     std::atomic<int> tt_cutoffs{0};
@@ -69,7 +75,7 @@ inline bool shouldStopSearching(const std::stop_token& st, SharedSearchContext& 
         auto now = std::chrono::steady_clock::now();
         auto current_time_ms =
             std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-        int max_time = search_ctx.max_search_time_ms.load();
+        const int max_time = search_ctx.max_search_time_ms.load();
 
         if (max_time > 0 && (current_time_ms - search_ctx.time_limit_start_ms.load()) > max_time) {
             return true;
@@ -143,9 +149,9 @@ int quiescenceSearch(SharedSearchContext&   search_ctx,
     }
     alpha = std::max(best_score, alpha);
 
-    auto scoreMove = [&](const Move& move) {
+    auto score_move = [&](const Move& move) {
         if (move.isCapture()) {
-            return 10 * mvvLvaPieceValue(move.capturedPiece()) -
+            return (10 * mvvLvaPieceValue(move.capturedPiece())) -
                    mvvLvaPieceValue(move.movingPiece()) + 10000;
         }
         if (move.isPromotion()) {
@@ -156,7 +162,7 @@ int quiescenceSearch(SharedSearchContext&   search_ctx,
 
     int move_scores[MAX_LEGAL_MOVES];
     for (int i = 0; i < sink.count[ply]; ++i) {
-        move_scores[i] = scoreMove(sink.moves[ply][i]);
+        move_scores[i] = score_move(sink.moves[ply][i]);
     }
 
     for (int i = 0; i < sink.count[ply] - 1; ++i) {
@@ -198,7 +204,11 @@ int quiescenceSearch(SharedSearchContext&   search_ctx,
 
 /// @brief Alpha is minimum score that the maximizing player is assured of.
 /// Beta is maximum score that the minimizing player is assured of.
-template <Color Side, bool UseQuiescenceSearch = true, MoveSink MoveSinkT>
+template <Color    Side,
+          bool     UseQuiescenceSearch = true,
+          bool     IsRoot              = false,
+          bool     PauseAfterRootSort  = false,
+          MoveSink MoveSinkT>
 int search(SharedSearchContext&    search_ctx,
            BoardState&             board,
            MoveProcessor&          move_processor,
@@ -216,8 +226,13 @@ int search(SharedSearchContext&    search_ctx,
         return 0; // Draw.
     }
 
-    if (shouldStopSearching(st, search_ctx)) {
-        return SEARCH_INTERRUPTED;
+    // For the test hook path (IsRoot && PauseAfterRootSort), skip the early stop
+    // check so root moves are always generated and sorted before stopping —
+    // that guarantees root_best_move is populated regardless of when stopSearch() fires.
+    if constexpr (! (IsRoot && PauseAfterRootSort)) {
+        if (shouldStopSearching(st, search_ctx)) {
+            return SEARCH_INTERRUPTED;
+        }
     }
 
     // Transposition table cutoff.
@@ -295,11 +310,11 @@ int search(SharedSearchContext&    search_ctx,
                        ? stored_entry.best_move
                        : Move::none();
 
-    auto scoreMove = [&](const Move& move) {
+    auto score_move = [&](const Move& move) {
         if (move == tt_move)
             return 1000000;
         if (move.isCapture()) {
-            return 10 * mvvLvaPieceValue(move.capturedPiece()) -
+            return (10 * mvvLvaPieceValue(move.capturedPiece())) -
                    mvvLvaPieceValue(move.movingPiece()) + 10000;
         }
         if (move.isPromotion()) {
@@ -310,7 +325,7 @@ int search(SharedSearchContext&    search_ctx,
 
     int move_scores[MAX_LEGAL_MOVES];
     for (int i = 0; i < sink.count[ply]; ++i) {
-        move_scores[i] = scoreMove(sink.moves[ply][i]);
+        move_scores[i] = score_move(sink.moves[ply][i]);
     }
 
     for (int i = 0; i < sink.count[ply] - 1; ++i) {
@@ -322,6 +337,21 @@ int search(SharedSearchContext&    search_ctx,
         }
         std::swap(sink.moves[ply][i], sink.moves[ply][best_idx]);
         std::swap(move_scores[i], move_scores[best_idx]);
+    }
+
+    // Before searching, record the first sorted move as a fallback so the
+    // engine always has a legal move even if the search is interrupted immediately.
+    // Skip for constrained searches: if all search_moves are illegal the engine
+    // should signal no move rather than silently picking a different one.
+    if constexpr (IsRoot) {
+        if (search_parameters.search_moves.empty()) {
+            search_ctx.root_best_move = sink.moves[0][0];
+        }
+    }
+    // Test hook: pause here so tests can stop the search after sort but before
+    // any recursive call returns, exercising the fallback path deterministically.
+    if constexpr (IsRoot && PauseAfterRootSort) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 
     // Search the node.
@@ -369,7 +399,10 @@ int search(SharedSearchContext&    search_ctx,
             if (eval > best_score) {
                 best_score = eval;
                 best_move  = move;
-                alpha      = std::max(eval, alpha);
+                if constexpr (IsRoot) {
+                    search_ctx.root_best_move = move;
+                }
+                alpha = std::max(eval, alpha);
             }
             if (alpha >= beta) {
 #ifdef DEBUG
