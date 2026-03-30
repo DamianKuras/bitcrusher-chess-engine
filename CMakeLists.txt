@@ -10,10 +10,11 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG          "${CMAKE_SOURCE_DIR}/bin/Debug
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE        "${CMAKE_SOURCE_DIR}/bin/Release")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${CMAKE_SOURCE_DIR}/bin/RelWithDebInfo")
 
-option(BITCRUSHER_BUILD_UCI        "Build UCI console application" OFF)
-option(BITCRUSHER_BUILD_TESTS      "Build test suite"              OFF)
-option(BITCRUSHER_BUILD_BENCHMARKS "Build benchmarks"              OFF)
-option(BITCRUSHER_WITH_BMI2        "Enable BMI2/AVX2 instructions" OFF)
+option(BITCRUSHER_BUILD_UCI             "Build UCI console application"    OFF)
+option(BITCRUSHER_BUILD_TESTS           "Build test suite"                 OFF)
+option(BITCRUSHER_BUILD_BENCHMARKS      "Build benchmarks"                 OFF)
+option(BITCRUSHER_WITH_BMI2             "Enable BMI2/AVX2 instructions"    OFF)
+option(BITCRUSHER_BUILD_PYTHON_BINDINGS "Build pybind11 Python bindings"   OFF)
 
 add_subdirectory(src/engine)
 
@@ -25,4 +26,7 @@ if(BITCRUSHER_BUILD_TESTS)
 endif()
 if(BITCRUSHER_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
+endif()
+if(BITCRUSHER_BUILD_PYTHON_BINDINGS)
+    add_subdirectory(web/bindings)
 endif()
