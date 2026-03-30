@@ -1,0 +1,38 @@
+services:
+  api:
+    build:
+      context: .. # repo root - cmake needs src/engine/ headers
+      dockerfile: web/Dockerfile
+    ports:
+      - "8000:8000" # direct access + Swagger UI at localhost:8000/docs
+    restart: unless-stopped
+    environment:
+      - BITCRUSHER_CORS_ORIGINS=["http://localhost:80","http://localhost:3000"]
+      - BITCRUSHER_RATE_LIMIT_PER_MINUTE=4000
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 2g
+    healthcheck:
+      test: [ "CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80" # chess UI at localhost:80
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128m
