@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* RGB triplets - required for Tailwind opacity modifiers (bg-surface/80 etc.) */
+  :root {
+    --bg:       15 15 26;
+    --surface:  26 26 46;
+    --line:     45 45 74;
+    --copy:     221 225 240;
+    --muted:    122 126 153;
+    --accent:   94 156 240;
+    --accent-h: 122 176 245;
+    --danger:   224 92 122;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: rgb(var(--bg));
+    color: rgb(var(--copy));
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* Thin scrollbars globally */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--line)) transparent;
+  }
+
+  input[type='range'] {
+    accent-color: rgb(var(--accent));
+    cursor: pointer;
+    width: 100%;
+  }
+}
+
+/* Eval bar height transitions - Tailwind transition-all doesn't cover inline-style height */
+.eval-black { background: #1c1c1c; transition: height 0.35s ease; }
+.eval-white { background: #f0f0f0; transition: height 0.35s ease; }
