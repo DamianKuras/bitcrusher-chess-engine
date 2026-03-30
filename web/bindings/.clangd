@@ -1,0 +1,6 @@
+CompileFlags:
+  Add:
+    - -IC:\Users\Damian\AppData\Roaming\Python\Python312\site-packages\pybind11\include
+    - -IC:\Python312\include
+    - -Isrc/engine/include
+    - -std=c++23

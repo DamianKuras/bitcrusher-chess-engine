@@ -70,6 +70,21 @@ run_tests.bat      # Windows
 run_benchmarks.bat  # Windows
 ```
 
+## Web app
+
+A React chess frontend backed by FastAPI + pybind11 bindings. No UCI subprocess — the engine runs in-process.
+
+```bash
+docker compose -f web/docker-compose.yml up --build
+```
+
+| URL | What |
+|-----|------|
+| `http://localhost` | Chess frontend (play vs engine) |
+| `http://localhost:8000/docs` | Swagger UI |
+
+See **[web/README.md](web/README.md)** for full documentation: configuration, endpoints, development setup, testing, and load testing.
+
 ## Documentation
 
 The project uses [Doxygen](https://doxygen.nl/) to generate HTML and LaTeX documentation from the source code. To easily generate the documentation locally (which will safely clean up old folders first), use the provided script:

@@ -1,0 +1,7 @@
+web/__pycache__/
+web/.pytest_cache/
+web/tests/__pycache__/
+web/chess_engine*.so
+web/static/
+web/frontend/node_modules/
+web/frontend/dist/
