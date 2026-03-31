@@ -1,78 +1,114 @@
 # Bitcrusher Chess Engine
 
-## Overview
+A UCI-compatible chess engine written in C++23 using bitboard representation for fast move generation and search.
 
-Bitcrusher Chess Engine is a high-performance chess engine written in C++ that leverages bitboards for performance and efficient move generation.
+**Estimated strength: ~1921 Elo**
 
 ## Features
 
-- **Bitboard Representation:** Utilizes 64-bit integers to represent board states, ensuring fast bit-level operations.
-- **Efficient Move Generation:** Implements bit manipulation techniques to generate legal moves quickly.
-
-- **UCI Compatibility:** Easily integrates with popular chess GUIs using the Universal Chess Interface (UCI) protocol.
-- **Cross-Platform:** Designed to compile and run on major operating systems including Windows, macOS, and Linux.
-
-## Estimated Strength
-
-Currently, Bitcrusher's estimated Elo rating is ~1921.
+- **Bitboard representation:** 12 x 64-bit piece bitboards with fast bit-level operations
+- **Legal move generation:** per-piece generators with pinned-piece and check restriction contexts
+- **Alpha-beta search:** quiescence search, MVV-LVA move ordering, transposition table, multi-threaded via `search_manager`
+- **Tapered evaluation:** hand-crafted PST-based eval with separate middlegame/endgame weights
+- **Web UI:** React frontend backed by FastAPI with in-process pybind11 engine bindings (no UCI subprocess)
+- **UCI compatibility:** works with any UCI-compatible chess GUI
 
 ## Prerequisites
 
-- **Build System:** [premake5](https://premake.github.io/).
-- **Compiler:** A premake5 compliant compiler depending on the operating system.
+| Tool | Purpose |
+|------|---------|
+| CMake 3.25+ | Build system |
+| Ninja | Generator (used by all presets) |
+| vcpkg | Dependency manager (GoogleTest, Google Benchmark) |
+| MSVC / GCC / Clang | C++23-capable compiler |
 
-## Installation
+The UCI engine has no external dependencies. Only tests and benchmarks require vcpkg.
 
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/DamianKuras/bitcrusher-chess-engine.git
-   ```
+## Building
 
-## Building and compiling on Windows
+The project uses CMake presets. Scripts in `scripts/` wrap the common workflows and are the preferred way to build and run.
 
-Generate a Visual Studio solution with all modules (engine, UCI, tests, benchmarks):
+### Windows
 
-```bash
-premake5 vs2022 --with-tests --with-uci --with-benchmarks
+```batch
+scripts\run_uci.bat              # Build + launch UCI engine (Release)
+scripts\run_tests.bat            # Build + run GoogleTest suite (skips slow perft)
+scripts\run_all_tests.bat        # Build + run all tests including slow perft
+scripts\run_tests_debug.bat      # Debug build
+scripts\run_tests_no_bmi2.bat    # Without BMI2 intrinsics
+scripts\run_benchmarks.bat       # Build + run Google Benchmark suite
 ```
 
-In folder /build there should be a file BitcrusherChessEngine.sln after running these command.
-Open BitcrusherChessEngine.sln in Visual Studio  build, and run the desired projects.
-
-## Building and compiling on Linux
-
-Generate GNU Makefiles:
+### Linux / macOS
 
 ```bash
-premake5 gmake2 --with-uci --with-tests --with-benchmarks
+scripts/run_uci.sh
+scripts/run_tests.sh
+scripts/run_benchmarks.sh
 ```
 
-### Running and Testing
+### Manual CMake
 
-We provide cross-platform scripts (in `.sh` and `.bat` formats) in the `scripts/` directory to automate common tasks such as building, running tests, profiling, and launching the engine.
-
-For comprehensive documentation on available scripts, see [Scripts Documentation](scripts/README.md).
-
-**Examples:**
+If you prefer to invoke CMake directly, presets are defined in `CMakePresets.json`:
 
 ```bash
-# Run the UCI engine (Release mode)
-cd scripts
-./run_uci.sh       # Linux/macOS
-run_uci.bat        # Windows
+# UCI engine (no vcpkg required)
+cmake --preset uci
+cmake --build --preset uci-release
 
-# Run the test suite
-./run_tests.sh     # Linux/macOS
-run_tests.bat      # Windows
+# Tests (requires VCPKG_ROOT to be set)
+cmake --preset tests
+cmake --build --preset tests-release
+bin/Release/Tests.exe
 
-# Run benchmarks
-./run_benchmarks.sh # Linux/macOS
-run_benchmarks.bat  # Windows
+# Benchmarks
+cmake --preset benchmarks
+cmake --build --preset benchmarks-release
 ```
 
-## Web app
+Available presets: `uci`, `tests`, `tests-no-bmi2`, `benchmarks`, and Linux equivalents (`linux-uci-release`, `linux-tests-release`, etc.).
 
-A React chess frontend backed by FastAPI + pybind11 bindings. No UCI subprocess — the engine runs in-process.
+### BMI2 / AVX2
+
+Pass `-DBITCRUSHER_WITH_BMI2=ON` (or use any preset that already sets it) to enable `_pext_u64`, `_pdep_u64`, `_tzcnt_u64`, `_lzcnt_u64`.
+
+## Project Structure
+
+```
+src/
+  engine/include/         # Header-only engine library
+    legal_move_generators/  # Per-piece legal move generators
+    evaluation.hpp          # Hand-crafted PST tapered eval
+    search.hpp              # Alpha-beta + quiescence search
+    search_manager.hpp      # Multi-threaded search, transposition table
+    board_state.hpp         # 12 x 64-bit piece bitboards
+    fen_formatter.hpp       # FEN parsing and serialisation
+  uci/
+    uci_handler.hpp         # UCI command parser
+    uci.cpp                 # Entry point
+tests/engine/             # GoogleTest suite
+benchmarks/               # Google Benchmark suite
+web/                      # React + FastAPI web app (see below)
+scripts/                  # Build, test, lint, and tooling scripts
+data/fens/                # FEN position files used by benchmarks
+```
+
+## Other Scripts
+
+```batch
+scripts\format_code.bat              # clang-format
+scripts\lint_code.bat                # clang-tidy
+scripts\create_compile_commands.bat  # Generate compile_commands.json
+scripts\clean_workspace.bat          # Remove bin/ obj/ build/
+scripts\generate_docs.bat            # Generate Doxygen HTML/LaTeX docs
+scripts\estimate_elo.bat             # Gauntlet vs Stockfish (auto-downloaded)
+scripts\run_elo_test.bat             # SPRT Elo test vs reference branch
+scripts\build_engine_tournament.bat  # Release + BMI2 binary, prints path to Uci.exe
+```
+
+## Web App
+
+A React chess UI backed by FastAPI. The engine runs in-process via pybind11, no UCI subprocess.
 
 ```bash
 docker compose -f web/docker-compose.yml up --build
@@ -83,22 +119,21 @@ docker compose -f web/docker-compose.yml up --build
 | `http://localhost` | Chess frontend (play vs engine) |
 | `http://localhost:8000/docs` | Swagger UI |
 
-See **[web/README.md](web/README.md)** for full documentation: configuration, endpoints, development setup, testing, and load testing.
+See [web/README.md](web/README.md) for configuration, API reference, testing, and load testing.
 
 ## Documentation
 
-The project uses [Doxygen](https://doxygen.nl/) to generate HTML and LaTeX documentation from the source code. To easily generate the documentation locally (which will safely clean up old folders first), use the provided script:
-
-```bash
-cd scripts
-./generate_docs.sh      # Linux/macOS
-generate_docs.bat       # Windows
+```batch
+scripts\generate_docs.bat    # Windows
+scripts/generate_docs.sh     # Linux/macOS
 ```
+
+Generates Doxygen HTML + LaTeX from source into `docs/`.
 
 ## Acknowledgments
 
-- Inspired by various open source chess engines and [chess programming wiki](https://www.chessprogramming.org/Main_Page).
+Inspired by various open-source chess engines and the [Chess Programming Wiki](https://www.chessprogramming.org/Main_Page).
 
 ## License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
+MIT License. See the LICENSE file for details.
