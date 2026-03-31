@@ -73,7 +73,7 @@ export default function PlayTab() {
     setIsThinking(true)
     try {
       const r = await searchPosition(searchFen, currentDepth)
-      if (r.score_mate !== null) {
+      if (r.score_mate != null) {
         setEvalMate(engineTurn === 'b' ? -r.score_mate : r.score_mate)
         setEvalCp(null)
       } else {

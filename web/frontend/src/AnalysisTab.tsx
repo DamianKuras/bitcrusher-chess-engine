@@ -66,8 +66,8 @@ export default function AnalysisTab() {
       const r = await searchPosition(fenToSearch, depth)
       setResult(r)
       const stm = fenToSearch.split(' ')[1]
-      setEvalCp(stm === 'w' ? (r.score_cp ?? null) : r.score_cp !== null ? -r.score_cp : null)
-      setEvalMate(stm === 'w' ? r.score_mate : r.score_mate !== null ? -r.score_mate : null)
+      setEvalCp(stm === 'w' ? (r.score_cp ?? null) : r.score_cp != null ? -r.score_cp : null)
+      setEvalMate(stm === 'w' ? (r.score_mate ?? null) : r.score_mate != null ? -r.score_mate : null)
     } catch {
       setFenError('Search failed - check the API is running')
     } finally {

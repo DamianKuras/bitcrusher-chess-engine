@@ -1,8 +1,8 @@
 export interface SearchResult {
   fen: string
   depth: number
-  score_cp: number | null
-  score_mate: number | null
+  score_cp?: number | null
+  score_mate?: number | null
   best_move: string
   pv: string[]
   nodes: number
