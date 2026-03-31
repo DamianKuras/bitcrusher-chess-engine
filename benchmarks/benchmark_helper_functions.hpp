@@ -17,7 +17,8 @@ struct Epd {
 // Throws std::runtime_error if the file cannot be opened or read.
 [[nodiscard]] std::string loadFENFromFile(const std::filesystem::path& file_path);
 
-// Load the first Extended Position Description (EPD) from a given file. Used for loading single Extended Position Description.
+// Load the first Extended Position Description (EPD) from a given file. Used for loading single
+// Extended Position Description.
 //
 // Throws std::runtime_error if the file cannot be opened or read.
 [[nodiscard]] Epd loadEPDFromFile(const std::filesystem::path& file_path);

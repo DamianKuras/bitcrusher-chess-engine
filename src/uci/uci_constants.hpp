@@ -28,8 +28,7 @@ inline UciSpinOption THREADS{
     .name = "Threads", .default_value = 1, .min_value = 1, .max_value = 1024};
 
 // The value for memory of hash table in MB.
-inline UciSpinOption HASH{
-    .name = "Hash", .default_value = 32, .min_value = 1, .max_value = 1024};
+inline UciSpinOption HASH{.name = "Hash", .default_value = 32, .min_value = 1, .max_value = 1024};
 
 inline std::string OPTIONS = THREADS.toString() + HASH.toString();
 } // namespace bitcrusher

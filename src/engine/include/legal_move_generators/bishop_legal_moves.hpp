@@ -1,7 +1,6 @@
 #ifndef BITCRUSHER_BISHOP_LEGAL_MOVES_HPP
 #define BITCRUSHER_BISHOP_LEGAL_MOVES_HPP
 
-#include "attack_generators/diagonal_slider_attacks.hpp"
 #include "bitboard_enums.hpp"
 #include "concepts.hpp"
 #include "restriction_context.hpp"

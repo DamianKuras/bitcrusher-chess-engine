@@ -77,7 +77,10 @@ constexpr bool isValidEnPassant(const BoardState&         board,
 /// @param pawns_pinned_only_d Bitboard of pawns pinned only diagonally.
 /// @param restriction_context Contains check and pin informations.
 /// @param sink The move sink object that will store the generated capture moves.
-template <MoveSink MoveSinkT, Color Side, Direction PawnAttackDirection, MoveGenerationPolicy MoveGenerationP>
+template <MoveSink             MoveSinkT,
+          Color                Side,
+          Direction            PawnAttackDirection,
+          MoveGenerationPolicy MoveGenerationP>
     requires Horizontal<PawnAttackDirection>
 void generatePawnCaptureMoves(const BoardState&         board,
                               uint64_t                  pawns_not_pinned,
@@ -98,12 +101,12 @@ void generatePawnCaptureMoves(const BoardState&         board,
     uint64_t pawns_side_attacks_non_promotions =
         pawns_valid_side_attacks & NON_PROMOTION_RANKS_MASK;
 
-    generateCaptures<Side, PieceType::PAWN>(
-        pawns_side_attacks_non_promotions, sink, board,
-        getPawnAttackOffset<Side, PawnAttackDirection>());
+    generateCaptures<Side, PieceType::PAWN>(pawns_side_attacks_non_promotions, sink, board,
+                                            getPawnAttackOffset<Side, PawnAttackDirection>());
 
-    generatePromotionCaptures<Side, MoveGenerationP>(pawns_side_attacks_promotions, sink, board,
-                                           getPawnAttackOffset<Side, PawnAttackDirection>());
+    generatePromotionCaptures<Side, MoveGenerationP>(
+        pawns_side_attacks_promotions, sink, board,
+        getPawnAttackOffset<Side, PawnAttackDirection>());
 
     if (board.hasEnPassant()) {
         uint64_t en_passant_bitboard = convert::toBitboard(board.getEnPassantSquare());
@@ -160,8 +163,8 @@ void generateLegalPawnMoves(const BoardState&         board,
         sink, pawn_pushes_non_promotions, pawnPushOffset<Side>());
 
     uint64_t pawn_pushes_promotions = single_pawn_pushes & PROMOTION_RANKS_MASK;
-    createMovesFromBitboard<MoveType::PROMOTION, PieceType::PAWN, Side, PieceType::NONE, MoveSinkT, MoveGenerationP>(
-        sink, pawn_pushes_promotions, pawnPushOffset<Side>());
+    createMovesFromBitboard<MoveType::PROMOTION, PieceType::PAWN, Side, PieceType::NONE, MoveSinkT,
+                            MoveGenerationP>(sink, pawn_pushes_promotions, pawnPushOffset<Side>());
 
     // Double pawn pushes
     const uint64_t double_push_able_pawns_not_pinned = getPawnsOnStartRank<Side>(pawns_not_pinned);

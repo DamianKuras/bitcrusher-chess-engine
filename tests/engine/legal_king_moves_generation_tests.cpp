@@ -25,8 +25,9 @@ void generateLegalKingMovesBlack(const BoardState&         board,
 } // namespace
 
 const std::array<LegalMovesTestCase, 9> LEGAL_KING_MOVES_TEST_CASES{{
-    {.name = "King in the center of the board unblocked and not attacked should have 8 legal moves.",
-     .fen  = "k7/8/8/3K4/8/8/8/8 w - - 0 1",
+    {.name =
+         "King in the center of the board unblocked and not attacked should have 8 legal moves.",
+     .fen            = "k7/8/8/3K4/8/8/8/8 w - - 0 1",
      .expected_moves = {"d5c4", "d5d4", "d5e4", "d5c5", "d5e5", "d5c6", "d5d6", "d5e6"},
      .move_generator = generateLegalKingMovesWhite},
 

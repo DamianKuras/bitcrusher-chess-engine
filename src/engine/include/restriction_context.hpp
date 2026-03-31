@@ -170,8 +170,6 @@ inline void updateRestrictionContext(const BoardState&   board,
     restriction_context.updateCheckmask();
 }
 
-
-
 inline bool isCheckedHorizontallyOnRank(std::uint64_t king_bitboard,
                                         std::uint64_t occupancy,
                                         std::uint64_t enemy_horizontal_sliders,

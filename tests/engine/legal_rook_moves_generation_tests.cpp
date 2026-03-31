@@ -31,8 +31,9 @@ const std::array<LegalMovesTestCase, 7> LEGAL_ROOK_MOVES_TEST_CASES{{
      .expected_moves = {},
      .move_generator = generateLegalRookMovesWhite},
 
-    {.name = "Rook in corner with no blocking piece along file and rank should have 14 legal moves/",
-     .fen  = "7k/8/8/8/8/8/1K6/R7 w - - 0 1",
+    {.name =
+         "Rook in corner with no blocking piece along file and rank should have 14 legal moves/",
+     .fen            = "7k/8/8/8/8/8/1K6/R7 w - - 0 1",
      .expected_moves = {"a1b1", "a1c1", "a1d1", "a1e1", "a1f1", "a1g1", "a1h1", "a1a2", "a1a3",
                         "a1a4", "a1a5", "a1a6", "a1a7", "a1a8"},
      .move_generator = generateLegalRookMovesWhite},

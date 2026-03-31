@@ -38,8 +38,8 @@ public:
 
 BENCHMARK_DEFINE_F(EvaluationBenchmarksFixture, EvalInitialPosition)(benchmark::State& state) {
     for (auto _ : state) {
-        int eval1 = bitcrusher::basicEval(initial_position_board, bitcrusher::Color::WHITE);
-        int eval2 = bitcrusher::basicEval(initial_position_board, bitcrusher::Color::BLACK);
+        int eval1 = bitcrusher::eval(initial_position_board, bitcrusher::Color::WHITE);
+        int eval2 = bitcrusher::eval(initial_position_board, bitcrusher::Color::BLACK);
         benchmark::DoNotOptimize(eval1);
         benchmark::DoNotOptimize(eval2);
     }
@@ -47,8 +47,8 @@ BENCHMARK_DEFINE_F(EvaluationBenchmarksFixture, EvalInitialPosition)(benchmark::
 
 BENCHMARK_DEFINE_F(EvaluationBenchmarksFixture, EvalKiwipetePosition)(benchmark::State& state) {
     for (auto _ : state) {
-        int eval1 = bitcrusher::basicEval(kiwipete_position_board, bitcrusher::Color::WHITE);
-        int eval2 = bitcrusher::basicEval(kiwipete_position_board, bitcrusher::Color::BLACK);
+        int eval1 = bitcrusher::eval(kiwipete_position_board, bitcrusher::Color::WHITE);
+        int eval2 = bitcrusher::eval(kiwipete_position_board, bitcrusher::Color::BLACK);
         benchmark::DoNotOptimize(eval1);
         benchmark::DoNotOptimize(eval2);
     }
@@ -57,8 +57,8 @@ BENCHMARK_DEFINE_F(EvaluationBenchmarksFixture, EvalKiwipetePosition)(benchmark:
 BENCHMARK_DEFINE_F(EvaluationBenchmarksFixture, EvalBratkoKopecPositions)(benchmark::State& state) {
     for (auto _ : state) {
         for (auto board_state : bratko_kopec_board_states) {
-            int eval1 = bitcrusher::basicEval(board_state, bitcrusher::Color::WHITE);
-            int eval2 = bitcrusher::basicEval(board_state, bitcrusher::Color::BLACK);
+            int eval1 = bitcrusher::eval(board_state, bitcrusher::Color::WHITE);
+            int eval2 = bitcrusher::eval(board_state, bitcrusher::Color::BLACK);
             benchmark::DoNotOptimize(eval1);
             benchmark::DoNotOptimize(eval2);
         }

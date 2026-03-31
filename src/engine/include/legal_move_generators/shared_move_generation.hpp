@@ -92,8 +92,8 @@ createMovesFromBitboard(MoveSinkT& sink, uint64_t move_to_target_squares, Square
             if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL) {
                 sink.template emplace<MoveT, PieceType::ROOK, SideToMove, CapturedPiece>(move_from,
                                                                                          to_square);
-                sink.template emplace<MoveT, PieceType::BISHOP, SideToMove, CapturedPiece>(move_from,
-                                                                                           to_square);
+                sink.template emplace<MoveT, PieceType::BISHOP, SideToMove, CapturedPiece>(
+                    move_from, to_square);
             }
         }
 
@@ -179,8 +179,9 @@ void generatePromotionCaptures(const uint64_t    attacks_bitboard,
     auto process_piece = [&]<PieceType CapturedPiece>() {
         uint64_t piece_type_captures =
             attacks_bitboard & board.getBitboard<CapturedPiece, ! Side>();
-        createMovesFromBitboard<MoveType::PROMOTION_CAPTURE, PieceType::PAWN, Side, CapturedPiece, MoveSinkT, MoveGenerationP>(
-            sink, piece_type_captures, offset_to_create_target_square);
+        createMovesFromBitboard<MoveType::PROMOTION_CAPTURE, PieceType::PAWN, Side, CapturedPiece,
+                                MoveSinkT, MoveGenerationP>(sink, piece_type_captures,
+                                                            offset_to_create_target_square);
     };
 
     process_piece.template operator()<PieceType::QUEEN>();
@@ -198,7 +199,8 @@ void generatePromotionCaptures(const uint64_t    attacks_bitboard,
 /// @return Bitboard with all squares the horizontal-vertical slider can attack.
 inline uint64_t getHorizontalVerticalAttacks(Square square, uint64_t occupancy) {
     occupancy &= PextBitboards::rook_masks[static_cast<int>(square)];
-    int index = static_cast<int>(_pext_u64(occupancy, PextBitboards::rook_masks[static_cast<int>(square)]));
+    int index =
+        static_cast<int>(_pext_u64(occupancy, PextBitboards::rook_masks[static_cast<int>(square)]));
     return PextBitboards::attack_table[PextBitboards::rook_index[static_cast<int>(square)] + index];
 }
 
@@ -209,7 +211,8 @@ inline uint64_t getHorizontalVerticalAttacks(Square square, uint64_t occupancy) 
 /// @return Bitboard with all squares the diagonal slider can attack.
 inline uint64_t getDiagonalAttacks(Square square, uint64_t occupancy) {
     occupancy &= PextBitboards::bishop_masks[static_cast<int>(square)];
-    int index = static_cast<int>(_pext_u64(occupancy, PextBitboards::bishop_masks[static_cast<int>(square)]));
+    int index = static_cast<int>(
+        _pext_u64(occupancy, PextBitboards::bishop_masks[static_cast<int>(square)]));
     return PextBitboards::attack_table[PextBitboards::bishop_index[static_cast<int>(square)] +
                                        index];
 }
@@ -243,7 +246,8 @@ void generateDiagonalSlidingPieceMoves(uint64_t          source_squares,
         piece_attacks = getDiagonalAttacks(piece_sq, board.getAllOccupancy()) & restriction_mask;
 
         generateCaptures<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
-        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL || MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
+        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL ||
+                      MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
             uint64_t quiet_moves = piece_attacks & board.getEmptySquares();
             createMovesFromBitboard<MoveType::QUIET, MovedPieceT, Side>(sink, quiet_moves,
                                                                         piece_sq);
@@ -256,7 +260,8 @@ void generateDiagonalSlidingPieceMoves(uint64_t          source_squares,
         uint64_t piece_attacks =
             generateDiagonalAttacks(piece_bb, board.getAllOccupancy()) & restriction_mask;
         generateCaptures<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
-        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL || MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
+        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL ||
+                      MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
             uint64_t quiet_moves = piece_attacks & board.getEmptySquares();
             createMovesFromBitboard<MoveType::QUIET, MovedPieceT, Side>(sink, quiet_moves,
                                                                         piece_sq);
@@ -293,7 +298,8 @@ void generateHorizontalVerticalSlidingPieceMoves(uint64_t          source_square
             getHorizontalVerticalAttacks(piece_sq, board.getAllOccupancy()) & restriction_mask;
 
         generateCaptures<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
-        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL || MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
+        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL ||
+                      MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
             uint64_t quiet_moves = piece_attacks & board.getEmptySquares();
             createMovesFromBitboard<MoveType::QUIET, MovedPieceT, Side>(sink, quiet_moves,
                                                                         piece_sq);
@@ -307,7 +313,8 @@ void generateHorizontalVerticalSlidingPieceMoves(uint64_t          source_square
             generateHorizontalVerticalAttacks(piece_bb, board.getAllOccupancy()) & restriction_mask;
         generateCaptures<Side, MovedPieceT>(piece_attacks, sink, board, piece_sq);
 
-        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL || MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
+        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL ||
+                      MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
             uint64_t quiet_moves = piece_attacks & board.getEmptySquares();
             createMovesFromBitboard<MoveType::QUIET, MovedPieceT, Side>(sink, quiet_moves,
                                                                         piece_sq);

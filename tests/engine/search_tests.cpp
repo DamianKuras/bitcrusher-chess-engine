@@ -261,7 +261,7 @@ TEST(searchTests, PrincipalVariationShouldBeCycleFree) {
     ASSERT_FALSE(pv.empty());
 
     // Walk PV moves and verify no position hash appears twice.
-    bitcrusher::BoardState    pv_board;
+    bitcrusher::BoardState pv_board;
     bitcrusher::parseFEN(fen, pv_board);
     bitcrusher::MoveProcessor    pv_mp;
     std::unordered_set<uint64_t> visited;
@@ -274,7 +274,7 @@ TEST(searchTests, PrincipalVariationShouldBeCycleFree) {
         pv_mp.applyMove(pv_board, move);
         const bool is_new = visited.insert(pv_board.getZobristHash()).second;
         EXPECT_TRUE(is_new) << "PV contains a cycle at move: " << move_uci;
-        if (!is_new) {
+        if (! is_new) {
             break;
         }
     }

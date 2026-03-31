@@ -113,7 +113,6 @@ public:
         return flag_ == MoveType::PROMOTION_CAPTURE;
     }
 
-
     template <MoveType  MoveT,
               PieceType MovedOrPromotedToPiece,
               Color     SideToMove,

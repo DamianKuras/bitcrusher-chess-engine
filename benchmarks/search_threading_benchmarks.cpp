@@ -78,7 +78,8 @@ BENCHMARK_DEFINE_F(SearchThreadingFixture, Threading_InitialPosition)(benchmark:
 
     for (auto _ : state) {
         const double nps_1t = timedSearch(initial_position_fen, 1);
-        // For n=1, reuse the baseline to avoid a redundant search and a nonsensical self-comparison.
+        // For n=1, reuse the baseline to avoid a redundant search and a nonsensical
+        // self-comparison.
         const double nps_nt = (n == 1) ? nps_1t : timedSearch(initial_position_fen, n);
         sum_nps_1t += nps_1t;
         sum_nps_nt += nps_nt;
@@ -92,10 +93,10 @@ BENCHMARK_DEFINE_F(SearchThreadingFixture, Threading_InitialPosition)(benchmark:
     const double speedup    = avg_nt / avg_1t;
     const double efficiency = speedup / n * 100.0;
 
-    state.counters["NPS_1T"] =
-        benchmark::Counter(avg_1t, benchmark::Counter::kDefaults, benchmark::Counter::OneK::kIs1000);
-    state.counters["NPS_NT"] =
-        benchmark::Counter(avg_nt, benchmark::Counter::kDefaults, benchmark::Counter::OneK::kIs1000);
+    state.counters["NPS_1T"]       = benchmark::Counter(avg_1t, benchmark::Counter::kDefaults,
+                                                        benchmark::Counter::OneK::kIs1000);
+    state.counters["NPS_NT"]       = benchmark::Counter(avg_nt, benchmark::Counter::kDefaults,
+                                                        benchmark::Counter::OneK::kIs1000);
     state.counters["Speedup"]      = speedup;
     state.counters["Efficiency_%"] = efficiency;
 }
@@ -123,10 +124,10 @@ BENCHMARK_DEFINE_F(SearchThreadingFixture, Threading_Kiwipete)(benchmark::State&
     const double speedup    = avg_nt / avg_1t;
     const double efficiency = speedup / n * 100.0;
 
-    state.counters["NPS_1T"] =
-        benchmark::Counter(avg_1t, benchmark::Counter::kDefaults, benchmark::Counter::OneK::kIs1000);
-    state.counters["NPS_NT"] =
-        benchmark::Counter(avg_nt, benchmark::Counter::kDefaults, benchmark::Counter::OneK::kIs1000);
+    state.counters["NPS_1T"]       = benchmark::Counter(avg_1t, benchmark::Counter::kDefaults,
+                                                        benchmark::Counter::OneK::kIs1000);
+    state.counters["NPS_NT"]       = benchmark::Counter(avg_nt, benchmark::Counter::kDefaults,
+                                                        benchmark::Counter::OneK::kIs1000);
     state.counters["Speedup"]      = speedup;
     state.counters["Efficiency_%"] = efficiency;
 }

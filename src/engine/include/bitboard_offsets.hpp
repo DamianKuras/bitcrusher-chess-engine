@@ -25,7 +25,8 @@ struct BitboardOffset {
 };
 
 template <typename T>
-concept DirectionVariant = std::is_same_v<T, Direction> || std::is_same_v<T, RepeatedDirection>;
+concept DirectionVariant = std::is_same_v<std::remove_cv_t<T>, Direction> ||
+                           std::is_same_v<std::remove_cv_t<T>, RepeatedDirection>;
 
 // Computes the total shift offset from a parameter pack of Directions/RepeatedDirection
 template <auto... Directions>

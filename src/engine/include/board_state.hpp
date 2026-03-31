@@ -95,7 +95,7 @@ public:
     [[nodiscard]] uint64_t getZobristHash() const { return zobrist_hash_; }
 
     // Adding, removing and moving pieces.
-    
+
     template <Color           Side,
               OccupancyPolicy UpdateOccupancy = OccupancyPolicy::UPDATE,
               HashPolicy      UpdateHash      = HashPolicy::UPDATE>

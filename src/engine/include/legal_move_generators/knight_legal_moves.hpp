@@ -30,11 +30,11 @@ void generateLegalKnightMoves(const BoardState&         board,
         uint64_t knight_attacks =
             generateKnightAttacks(knight_square) & restriction_context.checkmask;
         uint64_t knight_quiet_moves = knight_attacks & board.getEmptySquares();
-        generateCaptures<Side, PieceType::KNIGHT>(knight_attacks, sink, board,
-                                                  knight_square);
-        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL || MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
-            createMovesFromBitboard<MoveType::QUIET, PieceType::KNIGHT, Side>(sink, knight_quiet_moves,
-                                                                              knight_square);
+        generateCaptures<Side, PieceType::KNIGHT>(knight_attacks, sink, board, knight_square);
+        if constexpr (MoveGenerationP == MoveGenerationPolicy::TESTS_FULL ||
+                      MoveGenerationP == MoveGenerationPolicy::COMPETITIVE_FULL) {
+            createMovesFromBitboard<MoveType::QUIET, PieceType::KNIGHT, Side>(
+                sink, knight_quiet_moves, knight_square);
         }
     }
 }

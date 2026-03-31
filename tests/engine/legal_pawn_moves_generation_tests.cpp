@@ -25,7 +25,7 @@ void generateLegalPawnMovesBlack(const BoardState&         board,
 }
 } // namespace
 
-const std::array<LegalMovesTestCase, 13> LEGAL_PAWN_MOVES_TEST_CASES{{
+const std::array<LegalMovesTestCase, 14> LEGAL_PAWN_MOVES_TEST_CASES{{
     {.name           = "Starting chess position white pawn moves.",
      .fen            = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
      .expected_moves = {"a2a3", "a2a4", "b2b3", "b2b4", "c2c3", "c2c4", "d2d3", "d2d4", "e2e3",
@@ -91,6 +91,13 @@ const std::array<LegalMovesTestCase, 13> LEGAL_PAWN_MOVES_TEST_CASES{{
     {.name           = "Pawns should be able to promote with capture.",
      .fen            = "1n2k3/P7/8/8/8/8/8/4K3 w - - 0 1",
      .expected_moves = {"a7b8q", "a7b8b", "a7b8r", "a7b8n", "a7a8q", "a7a8b", "a7a8r", "a7a8n"},
+     .move_generator = generateLegalPawnMovesWhite},
+
+    {.name = "Pawns should not generate illegal diagonal captures when en passant is set but no "
+             "capture is possible.",
+     .fen  = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2",
+     .expected_moves = {"a2a3", "a2a4", "b2b3", "b2b4", "c2c3", "c2c4", "d2d3", "d2d4", "f2f3",
+                        "f2f4", "g2g3", "g2g4", "h2h3", "h2h4"},
      .move_generator = generateLegalPawnMovesWhite},
 
 }};

@@ -85,8 +85,8 @@ public:
             search_ctx_.time_limit_start_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                                   start_time_.time_since_epoch())
                                                   .count();
-            stop_source_                    = std::stop_source();
-            search_active_                  = true;
+            stop_source_   = std::stop_source();
+            search_active_ = true;
             // Calculate move time allocation.
             if (board_.isWhiteMove()) {
                 search_time_ms_ = calculateMoveTimeAllocation<Color::WHITE>(search_parameters);
