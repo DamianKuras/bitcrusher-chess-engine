@@ -7,6 +7,26 @@ on:
     branches: [main]
 
 jobs:
+  format:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update && sudo apt-get install -y clang-format-20
+          sudo ln -s /usr/bin/clang-format-20 /usr/local/bin/clang-format
+
+      - name: Check formatting
+        run: |
+          find src tests benchmarks -type f \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \) \
+            | xargs clang-format -i
+          git diff --exit-code
+
   linux:
     runs-on: ubuntu-24.04
 

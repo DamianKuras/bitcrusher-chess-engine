@@ -95,6 +95,13 @@ data/fens/                # FEN position files used by benchmarks
 
 ## Other Scripts
 
+Run once after cloning to activate the pre-commit formatting hook:
+
+```batch
+scripts\install_hooks.bat   # Windows
+scripts/install_hooks.sh    # Linux/macOS
+```
+
 ```batch
 scripts\format_code.bat              # clang-format
 scripts\lint_code.bat                # clang-tidy

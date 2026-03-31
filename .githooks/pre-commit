@@ -1,0 +1,37 @@
+#!/bin/sh
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(cpp|hpp|h)$')
+
+if [ -z "$STAGED" ]; then
+    exit 0
+fi
+
+CLANG_FORMAT=clang-format
+
+if ! command -v clang-format > /dev/null 2>&1; then
+    VSWHERE="/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
+    if [ -f "$VSWHERE" ]; then
+        VS_PATH=$("$VSWHERE" -latest -property installationPath 2>/dev/null)
+        CF="${VS_PATH}/VC/Tools/Llvm/x64/bin/clang-format.exe"
+        if [ -f "$CF" ]; then
+            CLANG_FORMAT="$CF"
+        fi
+    fi
+fi
+
+if ! command -v "$CLANG_FORMAT" > /dev/null 2>&1 && [ ! -f "$CLANG_FORMAT" ]; then
+    echo "clang-format not found, skipping format check."
+    exit 0
+fi
+
+echo "$STAGED" | xargs "$CLANG_FORMAT" -i
+
+CHANGED=$(git diff --name-only -- $STAGED)
+
+if [ -n "$CHANGED" ]; then
+    echo ""
+    echo "clang-format changed the following files:"
+    echo "$CHANGED"
+    echo ""
+    echo "Stage the formatted files and commit again, or run scripts/format_code.bat"
+    exit 1
+fi
