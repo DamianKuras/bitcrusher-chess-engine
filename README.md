@@ -143,4 +143,4 @@ Inspired by various open-source chess engines and the [Chess Programming Wiki](h
 
 ## License
 
-MIT License. See the LICENSE file for details.
+GPL-3.0 License. See the LICENSE file for details.
