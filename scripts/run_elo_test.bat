@@ -51,8 +51,17 @@ echo Using remote: !REMOTE_URL!
 echo Cloning repositories...
 git clone -q --branch "%BRANCH_BASE%" "!REMOTE_URL!" "%BASE_DIR%"
 if %errorlevel% neq 0 ( echo Error: Failed to clone base. & goto cleanup_fail )
-git clone -q --branch "%BRANCH_DEV%" "!REMOTE_URL!" "%DEV_DIR%"
-if %errorlevel% neq 0 ( echo Error: Failed to clone dev. & goto cleanup_fail )
+
+git ls-remote --exit-code --heads "!REMOTE_URL!" "%BRANCH_DEV%" >nul 2>nul
+if !errorlevel! == 0 (
+    echo Cloning dev branch '%BRANCH_DEV%' from remote...
+    git clone -q --branch "%BRANCH_DEV%" "!REMOTE_URL!" "%DEV_DIR%"
+    if !errorlevel! neq 0 ( echo Error: Failed to clone dev. & goto cleanup_fail )
+) else (
+    echo Dev branch '%BRANCH_DEV%' not found on remote, copying current local state...
+    robocopy "%REPO_ROOT%" "%DEV_DIR%" /E /XD bin obj build /NP /NFL /NDL >nul
+    if !errorlevel! geq 8 ( echo Error: Failed to copy local state. & goto cleanup_fail )
+)
 
 echo Compiling Base Engine (%BRANCH_BASE%)...
 call "%~dp0build_engine_tournament.bat" "%BASE_DIR%" >nul

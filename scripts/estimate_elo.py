@@ -588,6 +588,23 @@ def main():
         sys.exit("ERROR: fastchess not found in PATH.\n"
                  "       Download from github.com/Disservin/fastchess and add to PATH.")
 
+    # Auto-build when using the default engine path.
+    using_default_engine = args.engine == str(default_engine)
+    if using_default_engine:
+        ext = ".bat" if platform.system() == "Windows" else ".sh"
+        build_script = script_dir / f"build_engine_tournament{ext}"
+        if build_script.is_file():
+            print("Building tournament engine...")
+            result = subprocess.run(
+                [str(build_script)], capture_output=True, text=True
+            )
+            if result.returncode != 0:
+                sys.exit(f"ERROR: Build failed.\n{result.stderr.strip()}")
+            built_exe = result.stdout.strip()
+            if built_exe and os.path.isfile(built_exe):
+                args.engine = built_exe
+                print(f"  Built: {built_exe}")
+
     engine_exe = os.path.abspath(args.engine)
     if not os.path.isfile(engine_exe):
         sys.exit(f"ERROR: Engine not found: {engine_exe}\n"

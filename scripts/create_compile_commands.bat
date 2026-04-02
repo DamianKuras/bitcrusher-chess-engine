@@ -11,7 +11,8 @@ cmake -S . -B build\compile-commands -G Ninja ^
     -DBITCRUSHER_BUILD_UCI=ON ^
     -DBITCRUSHER_BUILD_TESTS=ON ^
     -DBITCRUSHER_BUILD_BENCHMARKS=ON ^
-    -DBITCRUSHER_WITH_BMI2=ON
+    -DBITCRUSHER_WITH_BMI2=ON ^
+    -DBITCRUSHER_BUILD_PYTHON_BINDINGS=ON
 if %errorlevel% neq 0 exit /b 1
 copy /y "build\compile-commands\compile_commands.json" "compile_commands.json"
 echo compile_commands.json written to repo root.
