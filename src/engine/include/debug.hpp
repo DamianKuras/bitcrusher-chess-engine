@@ -4,6 +4,7 @@
 #include "bitboard_enums.hpp"
 #include "bitboard_utils.hpp"
 #include "board_state.hpp"
+#include <array>
 #include <iostream>
 #include <string>
 

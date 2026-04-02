@@ -50,6 +50,23 @@ class TranspositionTable {
 public:
     TranspositionTable() : table_(DEFAULT_TT_SIZE), searching_by_(DEFAULT_TT_SIZE) {}
 
+    // Determine the bound type from the search window and store the entry.
+    void
+    storeBounded(uint64_t key, int score, Move best_move, int depth, int alpha_orig, int beta) {
+        TranspositionTableEntry entry;
+        entry.key       = key;
+        entry.value     = score;
+        entry.best_move = best_move;
+        entry.depth     = depth;
+        if (score <= alpha_orig)
+            entry.evaluation_type = TranspositionTableEvaluationType::UPPERBOUND;
+        else if (score >= beta)
+            entry.evaluation_type = TranspositionTableEvaluationType::LOWERBOUND;
+        else
+            entry.evaluation_type = TranspositionTableEvaluationType::EXACT_VALUE;
+        store(key, entry);
+    }
+
     // Lock-free: racy reads/writes are intentional. The TT is a cache a torn
     // read produces an entry whose key won't match the position hash, so it is
     // silently treated as a miss.
