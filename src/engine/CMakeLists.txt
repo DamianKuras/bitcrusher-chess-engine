@@ -3,7 +3,12 @@ add_library(Engine INTERFACE)
 target_include_directories(Engine INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/attack_generators"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/bitboards"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/board"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/heuristics"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/legal_move_generators"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/moves"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/search"
 )
 
 target_compile_features(Engine INTERFACE cxx_std_23)

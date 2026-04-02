@@ -4,6 +4,7 @@
 #include "board_state.hpp"
 #include "concepts.hpp"
 #include "evaluation.hpp"
+#include "heuristics/heuristics.hpp"
 #include "legal_move_generators/legal_moves_generator.hpp"
 #include "legal_move_generators/shared_move_generation.hpp"
 #include "move.hpp"
@@ -65,7 +66,8 @@ struct SharedSearchContext {
 #endif
 };
 
-inline bool shouldStopSearching(const std::stop_token& st, SharedSearchContext& search_ctx) {
+template <typename CtxT>
+inline bool shouldStopSearching(const std::stop_token& st, CtxT& search_ctx) {
     if (st.stop_requested()) {
         return true;
     }
@@ -84,25 +86,8 @@ inline bool shouldStopSearching(const std::stop_token& st, SharedSearchContext& 
     return false;
 }
 
-constexpr int mvvLvaPieceValue(PieceType pt) noexcept {
-    switch (pt) {
-    case PieceType::QUEEN:
-        return 900;
-    case PieceType::ROOK:
-        return 500;
-    case PieceType::BISHOP:
-        return 330;
-    case PieceType::KNIGHT:
-        return 320;
-    case PieceType::PAWN:
-        return 100;
-    default:
-        return 0;
-    }
-}
-
-template <Color Side, MoveSink MoveSinkT>
-int quiescenceSearch(SharedSearchContext&   search_ctx,
+template <Color Side, SearchConfig Config = DEFAULT_CONFIG, MoveSink MoveSinkT, typename CtxT>
+int quiescenceSearch(CtxT&                  search_ctx,
                      BoardState&            board,
                      MoveProcessor&         move_processor,
                      RestrictionContext&    restriction_context,
@@ -129,7 +114,7 @@ int quiescenceSearch(SharedSearchContext&   search_ctx,
         if (sink.count[ply] == 0) { // No legal moves and in check.
             return -CHECKMATE_BASE;
         }
-    } else {
+    } else { // Not in check.
         generateLegalMoves<Side, MoveGenerationPolicy::COMPETITIVE_CAPTURES_ONLY,
                            RestrictionContextUpdatePolicy::LEAVE>(board, sink, restriction_context,
                                                                   ply);
@@ -137,44 +122,19 @@ int quiescenceSearch(SharedSearchContext&   search_ctx,
 
     int static_eval = eval(board, Side);
 
-    if (sink.count[ply] == 0) { // No legal Captures or max depth.
+    if (sink.count[ply] == 0) { // No legal captures or max depth.
         return static_eval;
     }
 
     int best_score = static_eval;
 
-    // Stand Pat.
+    // Stand pat.
     if (best_score >= beta) {
         return best_score;
     }
     alpha = std::max(best_score, alpha);
 
-    auto score_move = [&](const Move& move) {
-        if (move.isCapture()) {
-            return (10 * mvvLvaPieceValue(move.capturedPiece())) -
-                   mvvLvaPieceValue(move.movingPiece()) + 10000;
-        }
-        if (move.isPromotion()) {
-            return 900 + 5000;
-        }
-        return 0;
-    };
-
-    int move_scores[MAX_LEGAL_MOVES];
-    for (int i = 0; i < sink.count[ply]; ++i) {
-        move_scores[i] = score_move(sink.moves[ply][i]);
-    }
-
-    for (int i = 0; i < sink.count[ply] - 1; ++i) {
-        int best_idx = i;
-        for (int j = i + 1; j < sink.count[ply]; ++j) {
-            if (move_scores[j] > move_scores[best_idx]) {
-                best_idx = j;
-            }
-        }
-        std::swap(sink.moves[ply][i], sink.moves[ply][best_idx]);
-        std::swap(move_scores[i], move_scores[best_idx]);
-    }
+    heuristics::scoreAndSortQuiescence<Config>(sink, ply);
 
     for (int i = 0; i < sink.count[ply]; i++) {
         Move move = sink.moves[ply][i];
@@ -183,17 +143,17 @@ int quiescenceSearch(SharedSearchContext&   search_ctx,
         assert((board.getOwnOccupancy<Side>() ^ board.getOpponentOccupancy<Side>()) ==
                board.getAllOccupancy());
         // -Search because the opponent's best score becomes your worst.
-        int eval = -quiescenceSearch<! Side, MoveSinkT>(search_ctx, board, move_processor,
-                                                        restriction_context, -beta, -alpha, st,
-                                                        sink, ply + 1);
+        int score = -quiescenceSearch<! Side, Config>(search_ctx, board, move_processor,
+                                                      restriction_context, -beta, -alpha, st, sink,
+                                                      ply + 1);
 
         move_processor.undoMove(board, move);
-        if (abs(eval) == SEARCH_INTERRUPTED) {
+        if (abs(score) == SEARCH_INTERRUPTED) {
             return SEARCH_INTERRUPTED;
         }
-        if (eval > best_score) {
-            best_score = eval;
-            alpha      = std::max(eval, alpha);
+        if (score > best_score) {
+            best_score = score;
+            alpha      = std::max(score, alpha);
         }
         if (alpha >= beta) {
             break; // Beta cutoff.
@@ -204,12 +164,13 @@ int quiescenceSearch(SharedSearchContext&   search_ctx,
 
 /// @brief Alpha is minimum score that the maximizing player is assured of.
 /// Beta is maximum score that the minimizing player is assured of.
-template <Color    Side,
-          bool     UseQuiescenceSearch = true,
-          bool     IsRoot              = false,
-          bool     PauseAfterRootSort  = false,
-          MoveSink MoveSinkT>
-int search(SharedSearchContext&    search_ctx,
+template <Color        Side,
+          SearchConfig Config             = DEFAULT_CONFIG,
+          bool         IsRoot             = false,
+          bool         PauseAfterRootSort = false,
+          MoveSink     MoveSinkT,
+          typename CtxT>
+int search(CtxT&                   search_ctx,
            BoardState&             board,
            MoveProcessor&          move_processor,
            const SearchParameters& search_parameters,
@@ -227,8 +188,7 @@ int search(SharedSearchContext&    search_ctx,
     }
 
     // For the test hook path (IsRoot && PauseAfterRootSort), skip the early stop
-    // check so root moves are always generated and sorted before stopping —
-    // that guarantees root_best_move is populated regardless of when stopSearch() fires.
+    // check so root moves are always generated and sorted before stopping.
     if constexpr (! (IsRoot && PauseAfterRootSort)) {
         if (shouldStopSearching(st, search_ctx)) {
             return SEARCH_INTERRUPTED;
@@ -242,102 +202,80 @@ int search(SharedSearchContext&    search_ctx,
         return ON_EVALUATION;
     }
     if (stored_entry.key == zobrist_key && stored_entry.depth >= depth) {
-
-        if (stored_entry.evaluation_type == TranspositionTableEvaluationType::EXACT_VALUE) {
-#ifdef DEBUG
-            search_ctx.tt_cutoffs.fetch_add(1, std::memory_order_relaxed);
-#endif
-            return stored_entry.value;
+        // At root, only cut off when the TT move is valid (piece on from-square).
+        // An invalid move signals a hash collision: fall through to the full search so
+        // root_best_move is always set to a legal move rather than Move::none().
+        bool do_tt_cutoff = true;
+        if constexpr (IsRoot) {
+            bool tt_move_valid = ! stored_entry.best_move.isNullMove() &&
+                                 (board.getOwnOccupancy<Side>() &
+                                  (1ULL << static_cast<int>(stored_entry.best_move.fromSquare())));
+            if (tt_move_valid && search_parameters.search_moves.empty()) {
+                search_ctx.root_best_move = stored_entry.best_move;
+            }
+            do_tt_cutoff = tt_move_valid;
         }
-        if (stored_entry.evaluation_type == TranspositionTableEvaluationType::LOWERBOUND &&
-            stored_entry.value >= beta) {
+        if (do_tt_cutoff) {
+            if (stored_entry.evaluation_type == TranspositionTableEvaluationType::EXACT_VALUE) {
 #ifdef DEBUG
-            search_ctx.tt_cutoffs.fetch_add(1, std::memory_order_relaxed);
+                search_ctx.tt_cutoffs.fetch_add(1, std::memory_order_relaxed);
 #endif
-            return stored_entry.value;
-        }
-        if (stored_entry.evaluation_type == TranspositionTableEvaluationType::UPPERBOUND &&
-            stored_entry.value <= alpha) {
+                return stored_entry.value;
+            }
+            if (stored_entry.evaluation_type == TranspositionTableEvaluationType::LOWERBOUND &&
+                stored_entry.value >= beta) {
 #ifdef DEBUG
-            search_ctx.tt_cutoffs.fetch_add(1, std::memory_order_relaxed);
+                search_ctx.tt_cutoffs.fetch_add(1, std::memory_order_relaxed);
 #endif
-            return stored_entry.value;
+                return stored_entry.value;
+            }
+            if (stored_entry.evaluation_type == TranspositionTableEvaluationType::UPPERBOUND &&
+                stored_entry.value <= alpha) {
+#ifdef DEBUG
+                search_ctx.tt_cutoffs.fetch_add(1, std::memory_order_relaxed);
+#endif
+                return stored_entry.value;
+            }
         }
     }
 
     // Mate distance pruning.
-    int mate_value = CHECKMATE_BASE - ply;
-    if (mate_value < beta) {
-        beta = mate_value;
-        if (alpha >= beta) {
-            return mate_value;
-        }
-    }
-
-    mate_value = -(CHECKMATE_BASE - ply);
-    if (mate_value > alpha) {
-        alpha = mate_value;
-        if (alpha >= beta) {
-            return mate_value;
-        }
+    if (auto score = heuristics::applyMateDistancePruning(CHECKMATE_BASE, ply, alpha, beta)) {
+        return *score;
     }
 
     generateLegalMoves<Side, MoveGenerationPolicy::COMPETITIVE_FULL>(board, sink,
                                                                      restriction_context, ply);
 
-    // Check if side to move is mated.
-    if (sink.count[ply] == 0) { // No legal moves.
+    // Check if side to move is mated or stalemated.
+    if (sink.count[ply] == 0) {
         if (restriction_context.check_count > 0) {
-
-            int mate_score = CHECKMATE_BASE - ply; // Lower depth mates should have higher scores.
-            return -mate_score;
+            return -(CHECKMATE_BASE - ply); // Lower depth mates have higher scores.
         }
-        return 0; // Stalemate no legal moves and not in check.
+        return 0; // Stalemate.
     }
 
-    if (depth == 0 || (search_parameters.max_nodes > 0 &&
-                       search_ctx.nodes_searched >= search_parameters.max_nodes)) {
-        if constexpr (UseQuiescenceSearch) {
-            return quiescenceSearch<Side, MoveSinkT>(search_ctx, board, move_processor,
-                                                     restriction_context, -beta, -alpha, st, sink,
-                                                     ply + 1);
+    // At leaf or node budget exhausted.
+    // Unlike SEARCH_INTERRUPTED, this is a normal termination, the returned score
+    // is real and contributes to the search result.
+    bool at_leaf_or_node_budget_exhausted =
+        depth == 0 || (search_parameters.max_nodes > 0 &&
+                       search_ctx.nodes_searched >= search_parameters.max_nodes);
+
+    if (at_leaf_or_node_budget_exhausted) {
+        if constexpr (Config.quiescence.enabled) {
+            return quiescenceSearch<Side, Config>(search_ctx, board, move_processor,
+                                                  restriction_context, alpha, beta, st, sink,
+                                                  ply + 1);
         }
         return eval(board, Side);
     }
 
-    // Move ordering logic (TT Move + Capture/Promotion scoring).
     Move tt_move = (stored_entry.key == zobrist_key && stored_entry.depth > 0)
                        ? stored_entry.best_move
                        : Move::none();
 
-    auto score_move = [&](const Move& move) {
-        if (move == tt_move)
-            return 1000000;
-        if (move.isCapture()) {
-            return (10 * mvvLvaPieceValue(move.capturedPiece())) -
-                   mvvLvaPieceValue(move.movingPiece()) + 10000;
-        }
-        if (move.isPromotion()) {
-            return 900 + 5000; // rough value
-        }
-        return 0;
-    };
-
-    int move_scores[MAX_LEGAL_MOVES];
-    for (int i = 0; i < sink.count[ply]; ++i) {
-        move_scores[i] = score_move(sink.moves[ply][i]);
-    }
-
-    for (int i = 0; i < sink.count[ply] - 1; ++i) {
-        int best_idx = i;
-        for (int j = i + 1; j < sink.count[ply]; ++j) {
-            if (move_scores[j] > move_scores[best_idx]) {
-                best_idx = j;
-            }
-        }
-        std::swap(sink.moves[ply][i], sink.moves[ply][best_idx]);
-        std::swap(move_scores[i], move_scores[best_idx]);
-    }
+    heuristics::scoreAndSort<Config>(sink, tt_move, ply);
 
     // Before searching, record the first sorted move as a fallback so the
     // engine always has a legal move even if the search is interrupted immediately.
@@ -348,6 +286,7 @@ int search(SharedSearchContext&    search_ctx,
             search_ctx.root_best_move = sink.moves[0][0];
         }
     }
+
     // Test hook: pause here so tests can stop the search after sort but before
     // any recursive call returns, exercising the fallback path deterministically.
     if constexpr (IsRoot && PauseAfterRootSort) {
@@ -368,65 +307,50 @@ int search(SharedSearchContext&    search_ctx,
         int end_i   = sink.count[ply];
         for (int i = start_i; i < end_i; i++) {
             Move move = sink.moves[ply][i];
-            // Skips moves not in search moves if search moves has moves.
             if (ply == 0 && search_parameters.search_moves.size() > 0 &&
                 ! search_parameters.search_moves.contains(toUci(move))) {
                 needs_search[i] = false;
             }
             if (! needs_search[i]) {
-                // Skip moves already fully evaluated in a prior pass.
                 continue;
             }
 
             move_processor.applyMove(board, move);
             search_ctx.tt.prefetch(board.getZobristHash());
-            bool exclusive = iteration == 0 && i != 0;
-            int  eval      = -search<! Side, UseQuiescenceSearch>(
-                search_ctx, board, move_processor, search_parameters, restriction_context,
-                depth - 1, -beta, -alpha, st, sink, ply + 1, exclusive);
+            bool is_exclusive = iteration == 0 && i != 0;
+            int  score        = -search<! Side, Config>(search_ctx, board, move_processor,
+                                                        search_parameters, restriction_context, depth - 1,
+                                                        -beta, -alpha, st, sink, ply + 1, is_exclusive);
             move_processor.undoMove(board, move);
-            if (abs(eval) == SEARCH_INTERRUPTED) {
+            if (abs(score) == SEARCH_INTERRUPTED) {
                 return SEARCH_INTERRUPTED;
             }
-            if (abs(eval) == ON_EVALUATION) {
-                // Other thead is working on this move already.
+            if (abs(score) == ON_EVALUATION) {
                 all_done = false;
                 continue;
             }
-            // Mark this move as done for subsequent passes.
             needs_search[i] = false;
 
-            if (eval > best_score) {
-                best_score = eval;
+            if (score > best_score) {
+                best_score = score;
                 best_move  = move;
                 if constexpr (IsRoot) {
                     search_ctx.root_best_move = move;
                 }
-                alpha = std::max(eval, alpha);
+                alpha = std::max(score, alpha);
             }
             if (alpha >= beta) {
 #ifdef DEBUG
                 search_ctx.beta_cutoffs.fetch_add(1, std::memory_order_relaxed);
 #endif
-                all_done = true; // No need to search more nodes.
-                break;           // Beta cutoff.
+                all_done = true;
+                break;
             }
         }
     }
 
     search_ctx.tt.removeSearched(zobrist_key);
-    stored_entry.value     = best_score;
-    stored_entry.best_move = best_move;
-    stored_entry.depth     = depth;
-    stored_entry.key       = zobrist_key;
-    if (best_score <= alpha_orig) {
-        stored_entry.evaluation_type = TranspositionTableEvaluationType::UPPERBOUND;
-    } else if (best_score >= beta) {
-        stored_entry.evaluation_type = TranspositionTableEvaluationType::LOWERBOUND;
-    } else {
-        stored_entry.evaluation_type = TranspositionTableEvaluationType::EXACT_VALUE;
-    }
-    search_ctx.tt.store(zobrist_key, stored_entry);
+    search_ctx.tt.storeBounded(zobrist_key, best_score, best_move, depth, alpha_orig, beta);
     return best_score;
 }
 

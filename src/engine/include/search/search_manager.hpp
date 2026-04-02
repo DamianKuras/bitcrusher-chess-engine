@@ -99,11 +99,11 @@ public:
         search_fn_ = [this](SearchParameters opts, BoardState board, MoveProcessor mp,
                             std::stop_token st, SharedSearchContext& ctx) {
             if (opts.use_quiescence_search) {
-                performSearch<FastMoveSink, true, true, PauseAfterRootSort>(opts, board, mp, st,
-                                                                            ctx);
+                performSearch<FastMoveSink, true, DEFAULT_CONFIG, PauseAfterRootSort>(opts, board,
+                                                                                      mp, st, ctx);
             } else {
-                performSearch<FastMoveSink, true, false, PauseAfterRootSort>(opts, board, mp, st,
-                                                                             ctx);
+                performSearch<FastMoveSink, true, NO_QUIESCENCE_CONFIG, PauseAfterRootSort>(
+                    opts, board, mp, st, ctx);
             }
         };
         condition_.notify_all(); // Notifies main and all worker threads.
@@ -188,6 +188,12 @@ public:
             if (best_move_entry.value == NOT_FOUND_IN_TRANSPOSITION_TABLE ||
                 best_move_entry.best_move.isNullMove() || best_move_entry.key != hash ||
                 best_move_entry.depth < 0) {
+                break;
+            }
+            // Validate TT move: check piece is on from-square (guards against hash collisions).
+            uint64_t own_occ = pv_board.isWhiteMove() ? pv_board.getOwnOccupancy<Color::WHITE>()
+                                                      : pv_board.getOwnOccupancy<Color::BLACK>();
+            if (! (own_occ & (1ULL << static_cast<int>(best_move_entry.best_move.fromSquare())))) {
                 break;
             }
 
@@ -323,8 +329,8 @@ private:
             SharedSearchContext& ctx                   = search_ctx_;
             lock.unlock();
 
-            performSearch<FastMoveSink>(local_options, thread_board, thread_move_processor,
-                                        stop_token, ctx);
+            performSearch<FastMoveSink, false, DEFAULT_CONFIG>(
+                local_options, thread_board, thread_move_processor, stop_token, ctx);
 
             // Wait for main thread to finish searching.
             {
@@ -357,10 +363,10 @@ private:
         workers_shutdown_ = false; // Reset for future searches.
     }
 
-    template <MoveSink MoveSinkT,
-              bool     IsMainThread        = false,
-              bool     UseQuiescenceSearch = true,
-              bool     PauseAfterRootSort  = false>
+    template <MoveSink     MoveSinkT,
+              bool         IsMainThread       = false,
+              SearchConfig Config             = DEFAULT_CONFIG,
+              bool         PauseAfterRootSort = false>
     void performSearch(const SearchParameters& search_parameters,
                        BoardState              board,
                        MoveProcessor           move_processor,
@@ -375,13 +381,11 @@ private:
 
             int score{0};
             if (board.isWhiteMove()) {
-                score = bitcrusher::search<Color::WHITE, UseQuiescenceSearch, IsMainThread,
-                                           PauseAfterRootSort>(
+                score = bitcrusher::search<Color::WHITE, Config, IsMainThread, PauseAfterRootSort>(
                     search_ctx, board, move_processor, search_parameters, restriction_context, ply,
                     -CHECKMATE_BASE, CHECKMATE_BASE, st, sink);
             } else {
-                score = bitcrusher::search<Color::BLACK, UseQuiescenceSearch, IsMainThread,
-                                           PauseAfterRootSort>(
+                score = bitcrusher::search<Color::BLACK, Config, IsMainThread, PauseAfterRootSort>(
                     search_ctx, board, move_processor, search_parameters, restriction_context, ply,
                     -CHECKMATE_BASE, CHECKMATE_BASE, st, sink);
             }

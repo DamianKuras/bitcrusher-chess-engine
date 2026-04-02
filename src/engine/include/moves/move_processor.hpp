@@ -226,6 +226,40 @@ public:
         }
     }
 
+    // Apply a null move (pass the turn without moving a piece). Used by null-move
+    // pruning. Updates the Zobrist hash for the side-to-move and en passant changes.
+    void applyNullMove(BoardState& board) noexcept {
+        internal::MoveUndo undo;
+        undo.prev_castling_rights            = board.getCastlingRights();
+        undo.prev_en_passant_square          = board.getEnPassantSquare();
+        undo.prev_halfmove_clock             = board.getHalfmoveClock();
+        undo.prev_fullmove_number            = board.getFullmoveNumber();
+        undo.moving_side                     = board.getSideToMove();
+        undo.zobrist_hash                    = board.getZobristHash();
+        undo_history_[undo_history_pointer_] = undo;
+        ++undo_history_pointer_;
+
+        board.setEnPassantSquare(Square::NULL_SQUARE); // Clears ep and updates hash.
+        board.incrementHalfmoveClock();
+        if (undo.moving_side == Color::BLACK) {
+            board.incrementFullmoveNumber();
+        }
+        board.toggleSideToMove(); // Updates hash.
+        has_repeated_3_times_ = false;
+    }
+
+    // Undo a null move applied by applyNullMove.
+    void undoNullMove(BoardState& board) noexcept {
+        internal::MoveUndo undo = undo_history_[undo_history_pointer_ - 1];
+        --undo_history_pointer_;
+        board.setCastlingRights(undo.prev_castling_rights);
+        board.setEnPassantSquare<HashPolicy::LEAVE>(undo.prev_en_passant_square);
+        board.setHalfmoveClock(undo.prev_halfmove_clock);
+        board.setFullmoveNumber(undo.prev_fullmove_number);
+        board.toggleSideToMove<HashPolicy::LEAVE>();
+        board.setZobristHash(undo.zobrist_hash);
+    }
+
     void resetHistory() { undo_history_pointer_ = 0; }
 
     [[nodiscard]] bool hasCurrentPositionRepeated3Times() const { return has_repeated_3_times_; }
