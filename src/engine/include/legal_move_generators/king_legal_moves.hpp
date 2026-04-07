@@ -57,43 +57,44 @@ void generateLegalKingMoves(const BoardState&        board,
     createMovesFromBitboard<MoveType::QUIET, PieceType::KING, Side>(sink, king_quiet_moves,
                                                                     king_square);
 
+    if (! board.hasAnyCastlingRights() || restriction_context.check_count > 0) {
+        return;
+    }
     // Castling Moves.
     uint64_t enemy_attacked_squares = generateSquaresAttacked<! Side>(board);
-    if (restriction_context.check_count == 0) {
-        if constexpr (Side == Color::WHITE) {
-            if (board.hasCastlingRights<CastlingRights::WHITE_KINGSIDE>() &&
-                board.isEmpty(SQUARES_BETWEEN_WHITE_KINGSIDE_CASTLE_NOT_OCCUPIED_OR_ATTACKED) &&
-                ! (SQUARES_BETWEEN_WHITE_KINGSIDE_CASTLE_NOT_OCCUPIED_OR_ATTACKED &
-                   enemy_attacked_squares)) {
-                sink.template emplace<MoveType::KINGSIDE_CASTLE, PieceType::KING, Side>(Square::E1,
-                                                                                        Square::G1);
-            }
-
-            if (board.hasCastlingRights<CastlingRights::WHITE_QUEENSIDE>() &&
-                board.isEmpty(SQUARES_BETWEEN_WHITE_QUEENSIDE_CASTLE_NOT_OCCUPIED) &&
-                board.isNotAttackedByOpponent<Side>(
-                    SQUARES_BETWEEN_WHITE_QUEENSIDE_CASTLE_NOT_ATTACKED, enemy_attacked_squares)) {
-                sink.template emplace<MoveType::QUEENSIDE_CASTLE, PieceType::KING, Side>(
-                    Square::E1, Square::C1);
-            }
-        } else // Side == Color::Black
-        {
-            if (board.hasCastlingRights<CastlingRights::BLACK_KINGSIDE>() &&
-                board.isEmpty(SQUARES_BETWEEN_BLACK_KINGSIDE_CASTLE_NOT_OCCUPIED_OR_ATTACKED) &&
-                board.isNotAttackedByOpponent<Side>(
-                    SQUARES_BETWEEN_BLACK_KINGSIDE_CASTLE_NOT_OCCUPIED_OR_ATTACKED,
-                    enemy_attacked_squares)) {
-                sink.template emplace<MoveType::KINGSIDE_CASTLE, PieceType::KING, Side>(Square::E8,
-                                                                                        Square::G8);
-            }
-            if (board.hasCastlingRights<CastlingRights::BLACK_QUEENSIDE>() &&
-                board.isEmpty(SQUARES_BETWEEN_BLACK_QUEENSIDE_CASTLE_NOT_OCCUPIED) &&
-                board.isNotAttackedByOpponent<Side>(
-                    SQUARES_BETWEEN_BLACK_QUEENSIDE_CASTLE_NOT_ATTACKED, enemy_attacked_squares)) {
-                sink.template emplace<MoveType::QUEENSIDE_CASTLE, PieceType::KING, Side>(
-                    Square::E8, Square::C8);
-            };
+    if constexpr (Side == Color::WHITE) {
+        if (board.hasCastlingRights<CastlingRights::WHITE_KINGSIDE>() &&
+            board.isEmpty(SQUARES_BETWEEN_WHITE_KINGSIDE_CASTLE_NOT_OCCUPIED_OR_ATTACKED) &&
+            ! (SQUARES_BETWEEN_WHITE_KINGSIDE_CASTLE_NOT_OCCUPIED_OR_ATTACKED &
+               enemy_attacked_squares)) {
+            sink.template emplace<MoveType::KINGSIDE_CASTLE, PieceType::KING, Side>(Square::E1,
+                                                                                    Square::G1);
         }
+
+        if (board.hasCastlingRights<CastlingRights::WHITE_QUEENSIDE>() &&
+            board.isEmpty(SQUARES_BETWEEN_WHITE_QUEENSIDE_CASTLE_NOT_OCCUPIED) &&
+            board.isNotAttackedByOpponent<Side>(SQUARES_BETWEEN_WHITE_QUEENSIDE_CASTLE_NOT_ATTACKED,
+                                                enemy_attacked_squares)) {
+            sink.template emplace<MoveType::QUEENSIDE_CASTLE, PieceType::KING, Side>(Square::E1,
+                                                                                     Square::C1);
+        }
+    } else // Side == Color::Black
+    {
+        if (board.hasCastlingRights<CastlingRights::BLACK_KINGSIDE>() &&
+            board.isEmpty(SQUARES_BETWEEN_BLACK_KINGSIDE_CASTLE_NOT_OCCUPIED_OR_ATTACKED) &&
+            board.isNotAttackedByOpponent<Side>(
+                SQUARES_BETWEEN_BLACK_KINGSIDE_CASTLE_NOT_OCCUPIED_OR_ATTACKED,
+                enemy_attacked_squares)) {
+            sink.template emplace<MoveType::KINGSIDE_CASTLE, PieceType::KING, Side>(Square::E8,
+                                                                                    Square::G8);
+        }
+        if (board.hasCastlingRights<CastlingRights::BLACK_QUEENSIDE>() &&
+            board.isEmpty(SQUARES_BETWEEN_BLACK_QUEENSIDE_CASTLE_NOT_OCCUPIED) &&
+            board.isNotAttackedByOpponent<Side>(SQUARES_BETWEEN_BLACK_QUEENSIDE_CASTLE_NOT_ATTACKED,
+                                                enemy_attacked_squares)) {
+            sink.template emplace<MoveType::QUEENSIDE_CASTLE, PieceType::KING, Side>(Square::E8,
+                                                                                     Square::C8);
+        };
     }
 }
 

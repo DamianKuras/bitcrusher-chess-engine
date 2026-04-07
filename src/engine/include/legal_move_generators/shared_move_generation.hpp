@@ -191,33 +191,6 @@ void generatePromotionCaptures(const uint64_t    attacks_bitboard,
     process_piece.template operator()<PieceType::PAWN>();
 }
 
-#if defined(HAS_BMI2)
-/// @brief Generates horizontal-vertical slider (rook pattern) attack bitboard using PEXT magic
-/// bitboard technique. Produces captures for a single attacking piece.
-/// @param square The Square where the horizontal-vertical slider is located.
-/// @param occupancy Bitboard representing all occupied squares on the board.
-/// @return Bitboard with all squares the horizontal-vertical slider can attack.
-inline uint64_t getHorizontalVerticalAttacks(Square square, uint64_t occupancy) {
-    occupancy &= PextBitboards::rook_masks[static_cast<int>(square)];
-    int index =
-        static_cast<int>(_pext_u64(occupancy, PextBitboards::rook_masks[static_cast<int>(square)]));
-    return PextBitboards::attack_table[PextBitboards::rook_index[static_cast<int>(square)] + index];
-}
-
-/// @brief Generate diagonal slider (bishop pattern) attack bitboard using PEXT magic bitboard
-/// technique. Produces captures for a single attacking piece.
-/// @param square The Square where the horizontal vertical slider is located.
-/// @param occupancy Bitboard representing all occupied squares on the board.
-/// @return Bitboard with all squares the diagonal slider can attack.
-inline uint64_t getDiagonalAttacks(Square square, uint64_t occupancy) {
-    occupancy &= PextBitboards::bishop_masks[static_cast<int>(square)];
-    int index = static_cast<int>(
-        _pext_u64(occupancy, PextBitboards::bishop_masks[static_cast<int>(square)]));
-    return PextBitboards::attack_table[PextBitboards::bishop_index[static_cast<int>(square)] +
-                                       index];
-}
-#endif
-
 /// @brief Generates Diagonal Sliding Piece Moves.
 /// @tparam MovedPieceT Type of the moved slider piece (Bisop or Queen).
 /// @tparam Side Color of the sliding piece.
