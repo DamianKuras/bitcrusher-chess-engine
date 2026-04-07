@@ -47,3 +47,5 @@ ga_*
 genetic-algorithm/__pycache__
 genetic-algorithm/build_pool
 genetic-algorithm/position_cache
+
+vtune_results

@@ -5,6 +5,9 @@ cd /d "%~dp0.."
 set BRANCH_DEV=%~1
 if "%BRANCH_DEV%"=="" set BRANCH_DEV=dev
 
+set BENCH_FILTER=%~2
+if "%BENCH_FILTER%"=="" set BENCH_FILTER=.
+
 set BRANCH_BASE=main
 set REPO_ROOT=%CD%
 
@@ -60,20 +63,22 @@ REM Run from the benchmarks/ subdirectory so relative data paths (../data/fens/)
 echo Running base benchmarks...
 pushd "%BASE_DIR%\benchmarks"
 "%BASE_DIR%\bin\Release\BenchmarkRunner.exe" ^
+    --benchmark_filter="!BENCH_FILTER!" ^
     --benchmark_out_format=json --benchmark_out="!BASE_JSON!" ^
-    --benchmark_repetitions=3 ^
+    --benchmark_repetitions=20 ^
     --benchmark_report_aggregates_only=true ^
-    --benchmark_min_warmup_time=0.2 2>nul
+    --benchmark_min_warmup_time=0.5 2>nul
 if %errorlevel% neq 0 ( popd & echo Error: Base benchmark run failed. & goto cleanup_fail )
 popd
 
 echo Running dev benchmarks...
 pushd "%DEV_DIR%\benchmarks"
 "%DEV_DIR%\bin\Release\BenchmarkRunner.exe" ^
+    --benchmark_filter="!BENCH_FILTER!" ^
     --benchmark_out_format=json --benchmark_out="!DEV_JSON!" ^
-    --benchmark_repetitions=3 ^
+    --benchmark_repetitions=20 ^
     --benchmark_report_aggregates_only=true ^
-    --benchmark_min_warmup_time=0.2 2>nul
+    --benchmark_min_warmup_time=0.5 2>nul
 if %errorlevel% neq 0 ( popd & echo Error: Dev benchmark run failed. & goto cleanup_fail )
 popd
 
