@@ -62,8 +62,9 @@ public:
             entry.evaluation_type = TranspositionTableEvaluationType::UPPERBOUND;
         else if (score >= beta)
             entry.evaluation_type = TranspositionTableEvaluationType::LOWERBOUND;
-        else
+        else {
             entry.evaluation_type = TranspositionTableEvaluationType::EXACT_VALUE;
+        }
         store(key, entry);
     }
 

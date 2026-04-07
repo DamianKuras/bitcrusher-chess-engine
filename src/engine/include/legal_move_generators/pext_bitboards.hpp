@@ -87,6 +87,23 @@ private:
     }
 };
 
+/// @brief Single-piece PEXT horizontal/vertical (rook pattern) attack lookup.
+inline uint64_t getHorizontalVerticalAttacks(Square square, uint64_t occupancy) {
+    occupancy &= PextBitboards::rook_masks[static_cast<int>(square)];
+    int index =
+        static_cast<int>(_pext_u64(occupancy, PextBitboards::rook_masks[static_cast<int>(square)]));
+    return PextBitboards::attack_table[PextBitboards::rook_index[static_cast<int>(square)] + index];
+}
+
+/// @brief Single-piece PEXT diagonal (bishop pattern) attack lookup.
+inline uint64_t getDiagonalAttacks(Square square, uint64_t occupancy) {
+    occupancy &= PextBitboards::bishop_masks[static_cast<int>(square)];
+    int index = static_cast<int>(
+        _pext_u64(occupancy, PextBitboards::bishop_masks[static_cast<int>(square)]));
+    return PextBitboards::attack_table[PextBitboards::bishop_index[static_cast<int>(square)] +
+                                       index];
+}
+
 } // namespace bitcrusher
 #endif // defined(HAS_BMI2)
 #endif // BITCRUSHER_PEXT_BITBOARDS_HPP
