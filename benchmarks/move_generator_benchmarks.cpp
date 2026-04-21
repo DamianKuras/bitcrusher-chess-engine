@@ -87,10 +87,9 @@ BENCHMARK_DEFINE_F(MoveGeneratorBenchmarksFixture, GenerateMoves)(benchmark::Sta
             }
         }
         benchmark::DoNotOptimize(sink);
-
-        state.counters["moves_per_second"] =
-            benchmark::Counter(static_cast<double>(total_moves), benchmark::Counter::kIsRate);
     }
+    state.counters["moves_per_second"] =
+        benchmark::Counter(static_cast<double>(total_moves), benchmark::Counter::kIsRate);
 }
 
 BENCHMARK_REGISTER_F(MoveGeneratorBenchmarksFixture, GenerateMoves)->Repetitions(REPETITION_COUNT);
