@@ -330,9 +330,9 @@ int search(CtxT&                   search_ctx,
             move_processor.applyMove(board, move);
             search_ctx.tt.prefetch(board.getZobristHash());
             bool is_exclusive = iteration == 0 && i != 0;
-            int  score = -search<! Side, Config>(search_ctx, board, move_processor,
-                                                 search_parameters, restriction_context, depth - 1,
-                                                 -beta, -alpha, st, sink, ply + 1, is_exclusive);
+            int  score        = -search<! Side, Config>(search_ctx, board, move_processor,
+                                                        search_parameters, restriction_context, depth - 1,
+                                                        -beta, -alpha, st, sink, ply + 1, is_exclusive);
             move_processor.undoMove(board, move);
             if (abs(score) == SEARCH_INTERRUPTED) {
                 return SEARCH_INTERRUPTED;
