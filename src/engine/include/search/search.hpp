@@ -96,8 +96,11 @@ int quiescenceSearch(CtxT&                  search_ctx,
                      const std::stop_token& st,
                      MoveSinkT&             sink,
                      int                    ply) {
-    if (move_processor.hasCurrentPositionRepeated3Times()) {
+    if (move_processor.hasPositionRepeatedOnPath()) {
         return 0;
+    }
+    if (board.getHalfmoveClock() >= 100) {
+        return 0; // Fifty-move rule draw.
     }
     if (shouldStopSearching(st, search_ctx)) {
         return SEARCH_INTERRUPTED;
@@ -183,8 +186,17 @@ int search(CtxT&                   search_ctx,
            int                     ply       = 0,
            bool                    exclusive = false) {
     int alpha_orig = alpha;
-    if (move_processor.hasCurrentPositionRepeated3Times()) {
-        return 0; // Draw.
+    if constexpr (IsRoot) {
+        if (move_processor.hasCurrentPositionRepeated3Times()) {
+            return 0; // Draw.
+        }
+    } else {
+        if (move_processor.hasPositionRepeatedOnPath()) {
+            return 0; // Draw.
+        }
+    }
+    if (board.getHalfmoveClock() >= 100) {
+        return 0; // Fifty-move rule draw.
     }
 
     // For the test hook path (IsRoot && PauseAfterRootSort), skip the early stop
@@ -318,9 +330,9 @@ int search(CtxT&                   search_ctx,
             move_processor.applyMove(board, move);
             search_ctx.tt.prefetch(board.getZobristHash());
             bool is_exclusive = iteration == 0 && i != 0;
-            int  score        = -search<! Side, Config>(search_ctx, board, move_processor,
-                                                        search_parameters, restriction_context, depth - 1,
-                                                        -beta, -alpha, st, sink, ply + 1, is_exclusive);
+            int  score = -search<! Side, Config>(search_ctx, board, move_processor,
+                                                 search_parameters, restriction_context, depth - 1,
+                                                 -beta, -alpha, st, sink, ply + 1, is_exclusive);
             move_processor.undoMove(board, move);
             if (abs(score) == SEARCH_INTERRUPTED) {
                 return SEARCH_INTERRUPTED;

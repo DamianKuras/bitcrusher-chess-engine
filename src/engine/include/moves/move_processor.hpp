@@ -184,6 +184,7 @@ undoMove(BoardState& board, const Move& move, const internal::MoveUndo& undo) no
 class MoveProcessor {
     std::array<internal::MoveUndo, MAX_DEPTH> undo_history_{};
     int                                       undo_history_pointer_{0};
+    bool                                      has_repeated_on_path_{false};
     bool                                      has_repeated_3_times_{false};
 
 public:
@@ -203,17 +204,18 @@ public:
                             : internal::applyMove<Color::BLACK>(board, move);
 
         uint64_t current_hash = board.getZobristHash();
-
-        int count = 1; // Current position occurred one time.
-        for (int i = (undo_history_pointer_ - 2); i >= 0; i -= 2) {
+        int      max_lookback = board.getHalfmoveClock();
+        int      count        = 1; // Current position occurred one time.
+        for (int i = (undo_history_pointer_ - 2);
+             i >= 0 && (undo_history_pointer_ - i) <= max_lookback; i -= 2) {
             if (current_hash == undo_history_[i].zobrist_hash) {
-                ++count;
-            }
-            if (count == 3) {
-                break;
+                if (++count == 3) {
+                    break;
+                }
             }
         }
-        has_repeated_3_times_ = (count == 3);
+        has_repeated_on_path_ = (count >= 2);
+        has_repeated_3_times_ = (count >= 3);
     }
 
     void undoMove(BoardState& board, const Move& move) noexcept {
@@ -245,6 +247,7 @@ public:
             board.incrementFullmoveNumber();
         }
         board.toggleSideToMove(); // Updates hash.
+        has_repeated_on_path_ = false;
         has_repeated_3_times_ = false;
     }
 
@@ -261,6 +264,8 @@ public:
     }
 
     void resetHistory() { undo_history_pointer_ = 0; }
+
+    [[nodiscard]] bool hasPositionRepeatedOnPath() const { return has_repeated_on_path_; }
 
     [[nodiscard]] bool hasCurrentPositionRepeated3Times() const { return has_repeated_3_times_; }
 };

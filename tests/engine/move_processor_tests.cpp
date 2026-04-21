@@ -283,6 +283,65 @@ TEST_F(MoveProcessorFixture, PawnPromotionBishopPromotion) {
     EXPECT_EQ(board, pre_move_state);
 }
 
+TEST_F(MoveProcessorFixture, TwoFoldRepetitionDetectedOnPath) {
+    parseFEN("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", board);
+    const Move white_knight_jump_forward =
+        Move::createQuietMove(Square::G1, Square::F3, PieceType::KNIGHT);
+    const Move white_knight_jump_backward =
+        Move::createQuietMove(Square::F3, Square::G1, PieceType::KNIGHT);
+    const Move black_knight_jump_forward =
+        Move::createQuietMove(Square::G8, Square::F6, PieceType::KNIGHT);
+    const Move black_knight_jump_backward =
+        Move::createQuietMove(Square::F6, Square::G8, PieceType::KNIGHT);
+
+    // After Nf3+Nf6: new position, no repetition yet.
+    move_processor.applyMove(board, white_knight_jump_forward);
+    move_processor.applyMove(board, black_knight_jump_forward);
+    EXPECT_FALSE(move_processor.hasPositionRepeatedOnPath());
+    EXPECT_FALSE(move_processor.hasCurrentPositionRepeated3Times());
+
+    // After Ng1+Ng8: back to initial position (2nd occurrence), 2-fold detected.
+    move_processor.applyMove(board, white_knight_jump_backward);
+    move_processor.applyMove(board, black_knight_jump_backward);
+    EXPECT_TRUE(move_processor.hasPositionRepeatedOnPath());
+    EXPECT_FALSE(move_processor.hasCurrentPositionRepeated3Times());
+}
+
+// Regression: when the game position has been shuffled to a 2-fold repetition,
+// the root search must NOT treat it as a draw (only 3-fold is a real draw).
+// hasPositionRepeatedOnPath() signals a draw for non-root nodes only.
+// hasCurrentPositionRepeated3Times() is the real draw claim used at the root.
+TEST_F(MoveProcessorFixture, TwoFoldOnPathDoesNotImplyThreeFold) {
+    parseFEN("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", board);
+    const Move white_knight_jump_forward =
+        Move::createQuietMove(Square::G1, Square::F3, PieceType::KNIGHT);
+    const Move white_knight_jump_backward =
+        Move::createQuietMove(Square::F3, Square::G1, PieceType::KNIGHT);
+    const Move black_knight_jump_forward =
+        Move::createQuietMove(Square::G8, Square::F6, PieceType::KNIGHT);
+    const Move black_knight_jump_backward =
+        Move::createQuietMove(Square::F6, Square::G8, PieceType::KNIGHT);
+
+    // Simulate game history: shuffle pieces until 2-fold.
+    move_processor.applyMove(board, white_knight_jump_forward);
+    move_processor.applyMove(board, black_knight_jump_forward);
+    move_processor.applyMove(board, white_knight_jump_backward);
+    move_processor.applyMove(board, black_knight_jump_backward);
+
+    // 2-fold: non-root search should treat this as a draw, but root must not.
+    EXPECT_TRUE(move_processor.hasPositionRepeatedOnPath());
+    EXPECT_FALSE(move_processor.hasCurrentPositionRepeated3Times());
+
+    // One more cycle reaches 3-fold: now root can also claim draw.
+    move_processor.applyMove(board, white_knight_jump_forward);
+    move_processor.applyMove(board, black_knight_jump_forward);
+    move_processor.applyMove(board, white_knight_jump_backward);
+    move_processor.applyMove(board, black_knight_jump_backward);
+
+    EXPECT_TRUE(move_processor.hasPositionRepeatedOnPath());
+    EXPECT_TRUE(move_processor.hasCurrentPositionRepeated3Times());
+}
+
 TEST_F(MoveProcessorFixture, ThreeTimeRepetition) {
     parseFEN("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", board);
     const Move white_knight_jump_forward =

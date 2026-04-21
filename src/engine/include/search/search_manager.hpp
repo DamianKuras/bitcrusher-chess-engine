@@ -85,8 +85,8 @@ public:
             search_ctx_.time_limit_start_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                                   start_time_.time_since_epoch())
                                                   .count();
-            stop_source_   = std::stop_source();
-            search_active_ = true;
+            stop_source_                    = std::stop_source();
+            search_active_                  = true;
             // Calculate move time allocation.
             if (board_.isWhiteMove()) {
                 search_time_ms_ = calculateMoveTimeAllocation<Color::WHITE>(search_parameters);
@@ -181,7 +181,7 @@ public:
         int      visited_count        = 0;
         visited[visited_count++]      = board_.getZobristHash();
         visited[visited_count++]      = pv_board.getZobristHash();
-        int max_remaining_moves_in_pv = depth - 1;
+        int max_remaining_moves_in_pv = std::min(depth - 1, 19); // cap at 20 moves total
         while (max_remaining_moves_in_pv-- > 0) {
             uint64_t hash            = pv_board.getZobristHash();
             auto     best_move_entry = search_ctx_.tt.getEntry(hash);
@@ -197,6 +197,9 @@ public:
                 break;
             }
 
+            if (pv_board.getHalfmoveClock() >= 100) {
+                break; // Don't show moves past the fifty-move rule boundary.
+            }
             mp.applyMove(pv_board, best_move_entry.best_move);
             uint64_t new_hash = pv_board.getZobristHash();
             if (std::find(visited, visited + visited_count, new_hash) != visited + visited_count) {
